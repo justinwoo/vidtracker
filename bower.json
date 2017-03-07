@@ -1,0 +1,21 @@
+{
+  "name": "vidtracker",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-prelude": "^2.5.0",
+    "purescript-console": "^2.0.0",
+    "purescript-hyper": "^0.5.0",
+    "purescript-node-process": "^3.0.0",
+    "purescript-node-sqlite3": "^0.3.0",
+    "purescript-foreign-generic": "^3.0.0",
+    "purescript-foreign": "^3.2.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^2.0.0"
+  }
+}
