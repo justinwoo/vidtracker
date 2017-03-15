@@ -44,12 +44,6 @@ derive instance grUR :: Generic UpdateRequest _
 instance ifUR :: IsForeign UpdateRequest where
   read = DFG.readGeneric $ DFG.defaultOptions {unwrapSingleConstructors = true}
 
-lift'' :: forall t5 t6 t7 t8.
-  ( Monad t7
-  , MonadAff t8 t7
-  ) => Aff t8 t5 -> Middleware t7 t6 t6 t5
-lift'' = lift' <<< liftAff
-
 type AppEffects eff =
   ( avar :: AVAR
   , console :: CONSOLE
@@ -83,7 +77,7 @@ main = launchAff do
       writeStatus statusOK
       :*> headers [Tuple "Content-Type" "application/json"]
       :*> respond json
-    readFiles path = lift'' $ unsafeStringify <<< write <$> readdir path
+    readFiles path = lift' $ unsafeStringify <<< write <$> readdir path
     handleConn dir db conn =
       case Tuple conn.request.method conn.request.url of
         Tuple (Left GET) "/api/files" -> do
@@ -96,7 +90,7 @@ main = launchAff do
         _ -> fileServer "dist" notFound
         where
           bind = ibind
-          queryDB' q p = lift'' $ queryDB db q p
+          queryDB' q p = lift' $ queryDB db q p
           update = do
             body <- readBody
             case runExcept $ readJSON body of
