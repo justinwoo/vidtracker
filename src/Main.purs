@@ -11,13 +11,14 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Except (runExcept)
-import Data.Array (sortBy)
+import Data.Array (filter, sortBy)
 import Data.Either (Either(..))
 import Data.Foreign.Class (class IsForeign, readJSON, write)
 import Data.Generic.Rep (class Generic)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.String (Pattern(..), contains)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Global.Unsafe (unsafeStringify)
@@ -97,7 +98,7 @@ main = launchAff $
     readFiles path = lift' $ unsafeStringify <<< write <$> readdir'
       where
         readdir' = do
-          withStats <- traverse pairWithStat =<< readdir path
+          withStats <- traverse pairWithStat =<< filter (contains (Pattern "mkv")) <$> readdir path
           pure $ fst <$> sortByDate withStats
         pairWithStat file = do
           s <- stat $ concat [path, file]
