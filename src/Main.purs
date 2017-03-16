@@ -37,7 +37,7 @@ import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Process (PROCESS, lookupEnv)
-import SQLite3 (DBEffects, newDB, queryDB)
+import SQLite3 (DBConnection, DBEffects, newDB, queryDB)
 
 newtype OpenRequest = OpenRequest
   { path :: String
@@ -53,6 +53,11 @@ newtype UpdateRequest = UpdateRequest
 derive instance grUR :: Generic UpdateRequest _
 instance ifUR :: IsForeign UpdateRequest where
   read = DFG.readGeneric $ DFG.defaultOptions {unwrapSingleConstructors = true}
+
+newtype Config = Config
+  { db :: DBConnection
+  , dir :: String
+  }
 
 type AppEffects eff =
   ( avar :: AVAR
@@ -74,9 +79,10 @@ main = launchAff $
     Nothing -> error "we done broke now!!!!"
     Just dir -> do
       db <- newDB $ concat [dir, "filetracker"]
-      liftEff $ runServer options {} (router {dir, db})
+      let config = Config {db, dir}
+      liftEff $ runServer options config router
   where
-    router ctx = getConn :>>= handleConn ctx
+    router = getConn :>>= handleConn
     options = defaultOptions { onListening = onListening, onRequestError = onRequestError}
     onListening port = log $ "listening on " <> (show $ unwrap port)
     onRequestError error = log $ "error: " <> show error
@@ -99,7 +105,7 @@ main = launchAff $
         sortByDate = sortBy compareDates
         compareDates (Tuple _ a) (Tuple _ b) =
           compare EQ $ compare (modifiedTime a) (modifiedTime b)
-    handleConn {dir, db} conn =
+    handleConn conn@{components: Config {dir, db}} =
       case Tuple conn.request.method conn.request.url of
         Tuple (Left GET) "/api/files" -> files
         Tuple (Left GET) "/api/watched" -> watched
@@ -109,7 +115,6 @@ main = launchAff $
         where
           bind = ibind
           files = readFiles dir :>>= respondJSON
-          queryDB' q p = lift' $ queryDB db q p
           open = do
             body <- readBody
             case runExcept $ readJSON body of
@@ -120,6 +125,7 @@ main = launchAff $
                 writeStatus statusBadRequest
                 headers []
                 respond $ "you gave me bad JSON!!!\n" <> show e <> "\nin\n" <> body
+          queryDB' query params = lift' $ queryDB db query params
           update = do
             body <- readBody
             case runExcept $ readJSON body of
