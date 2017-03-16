@@ -33,15 +33,16 @@ function main(sources) {
           }, [
             a('.file-link', {
               style: {
-                flex: 1
+                flex: 1,
+                padding: '10px'
               },
               dataset: {
                 file
               }
             }, file),
-            button(`.file-button.mdl-button.mdl-button--raised${watched ? '.mdl-button--accent' : ''}`, {
+            button(`.file-button.pure-button${watched ? '.pure-button-primary' : ''}`, {
               style: {
-                width: '100px'
+                width: '200px'
               },
               dataset: {
                 file,
