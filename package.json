@@ -7,11 +7,21 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./node_modules/.bin/webpack ./fe/index.js ./dist/index.js",
+    "watch": "./node_modules/.bin/webpack -wd --progress ./fe/index.js ./dist/index.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@cycle/dom": "^16.0.0",
+    "@cycle/http": "^13.2.0",
+    "@cycle/rxjs-run": "^6.1.0",
+    "rxjs": "^5.2.0",
     "sqlite3": "^3.1.8"
+  },
+  "devDependencies": {
+    "babelify": "^7.3.0",
+    "webpack": "^2.2.1"
   }
 }
