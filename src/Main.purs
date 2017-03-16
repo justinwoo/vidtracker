@@ -19,7 +19,7 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(Tuple), fst)
+import Data.Tuple (Tuple(Tuple), fst, snd)
 import Global.Unsafe (unsafeStringify)
 import Hyper.Middleware (lift')
 import Hyper.Middleware.Class (getConn)
@@ -102,9 +102,7 @@ main = launchAff $
         pairWithStat file = do
           s <- stat $ concat [path, file]
           pure (Tuple file s)
-        sortByDate = sortBy compareDates
-        compareDates (Tuple _ a) (Tuple _ b) =
-          compare EQ $ compare (modifiedTime a) (modifiedTime b)
+        sortByDate = sortBy <<< flip $ comparing (modifiedTime <<< snd)
     handleConn conn@{components: Config {dir, db}} =
       case Tuple conn.request.method conn.request.url of
         Tuple (Left GET) "/api/files" -> files
