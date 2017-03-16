@@ -3,9 +3,8 @@ module Main where
 import Prelude
 import Data.Foreign.Generic as DFG
 import Control.IxMonad (ibind, (:*>), (:>>=))
-import Control.Monad.Aff (Aff, Canceler, launchAff)
+import Control.Monad.Aff (Canceler, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -34,7 +33,7 @@ import Node.ChildProcess (CHILD_PROCESS, defaultSpawnOptions, spawn)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
 import Node.FS.Aff (readdir, stat)
-import Node.FS.Stats (Stats(..), modifiedTime)
+import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Process (PROCESS, lookupEnv)
@@ -70,14 +69,14 @@ main :: forall eff.
   Eff (AppEffects (err :: EXCEPTION | eff))
     (Canceler (AppEffects eff))
 main = launchAff do
-  dir <- liftEff $ lookupEnv "FILETRACKER_DIR"
-  case dir of
+  e <- liftEff $ lookupEnv "FILETRACKER_DIR"
+  case e of
     Nothing -> error "we done broke now!!!!"
-    Just path -> do
-      db <- newDB $ concat [path, "filetracker"]
-      liftEff $ runServer options {} (router path db)
+    Just dir -> do
+      db <- newDB $ concat [dir, "filetracker"]
+      liftEff $ runServer options {} (router {dir, db})
   where
-    router dir db = getConn :>>= handleConn dir db
+    router ctx = getConn :>>= handleConn ctx
     options = defaultOptions { onListening = onListening, onRequestError = onRequestError}
     onListening port = log $ "listening on " <> (show $ unwrap port)
     onRequestError error = log $ "error: " <> show error
@@ -101,7 +100,7 @@ main = launchAff do
         compareDates (Tuple _ a) (Tuple _ b) =
           compare (modifiedTime a) (modifiedTime b)
         extractStat (Tuple file _) = file
-    handleConn dir db conn =
+    handleConn {dir, db} conn =
       case Tuple conn.request.method conn.request.url of
         Tuple (Left GET) "/api/files" -> do
           files <- readFiles dir
