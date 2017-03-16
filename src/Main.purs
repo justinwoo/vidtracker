@@ -11,7 +11,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Except (runExcept)
-import Data.Array (reverse, sortBy)
+import Data.Array (sortBy)
 import Data.Either (Either(..))
 import Data.Foreign.Class (class IsForeign, readJSON, write)
 import Data.Generic.Rep (class Generic)
@@ -19,7 +19,7 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(Tuple))
+import Data.Tuple (Tuple(Tuple), fst)
 import Global.Unsafe (unsafeStringify)
 import Hyper.Middleware (lift')
 import Hyper.Middleware.Class (getConn)
@@ -68,9 +68,9 @@ type AppEffects eff =
 main :: forall eff.
   Eff (AppEffects (err :: EXCEPTION | eff))
     (Canceler (AppEffects eff))
-main = launchAff do
-  e <- liftEff $ lookupEnv "FILETRACKER_DIR"
-  case e of
+main = launchAff $
+  (liftEff $ lookupEnv "FILETRACKER_DIR") >>=
+  case _ of
     Nothing -> error "we done broke now!!!!"
     Just dir -> do
       db <- newDB $ concat [dir, "filetracker"]
@@ -92,28 +92,23 @@ main = launchAff do
       where
         readdir' = do
           withStats <- traverse pairWithStat =<< readdir path
-          pure $ extractStat <$> sortByDate withStats
+          pure $ fst <$> sortByDate withStats
         pairWithStat file = do
           s <- stat $ concat [path, file]
           pure (Tuple file s)
-        sortByDate = reverse <<< sortBy compareDates
+        sortByDate = sortBy compareDates
         compareDates (Tuple _ a) (Tuple _ b) =
-          compare (modifiedTime a) (modifiedTime b)
-        extractStat (Tuple file _) = file
+          compare EQ $ compare (modifiedTime a) (modifiedTime b)
     handleConn {dir, db} conn =
       case Tuple conn.request.method conn.request.url of
-        Tuple (Left GET) "/api/files" -> do
-          files <- readFiles dir
-          respondJSON files
-        Tuple (Left GET) "/api/watched" -> do
-          watched
-        Tuple (Left POST) "/api/update" -> do
-          update
-        Tuple (Left POST) "/api/open" -> do
-          open
+        Tuple (Left GET) "/api/files" -> files
+        Tuple (Left GET) "/api/watched" -> watched
+        Tuple (Left POST) "/api/update" -> update
+        Tuple (Left POST) "/api/open" -> open
         _ -> fileServer "dist" notFound
         where
           bind = ibind
+          files = readFiles dir :>>= respondJSON
           queryDB' q p = lift' $ queryDB db q p
           open = do
             body <- readBody
