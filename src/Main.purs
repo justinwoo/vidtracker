@@ -3,7 +3,7 @@ module Main where
 import Prelude
 import Data.Foreign.Generic as DFG
 import Control.IxMonad (ibind, (:*>), (:>>=))
-import Control.Monad.Aff (Canceler, launchAff)
+import Control.Monad.Aff (Aff, Canceler, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
@@ -22,7 +22,7 @@ import Data.String (Pattern(..), contains)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Global.Unsafe (unsafeStringify)
-import Hyper.Middleware (lift')
+import Hyper.Middleware (Middleware(..), lift')
 import Hyper.Middleware.Class (getConn)
 import Hyper.Node.FileServer (fileServer)
 import Hyper.Node.Server (defaultOptions, runServer)
@@ -114,29 +114,25 @@ main = launchAff $
         where
           bind = ibind
           files = readFiles dir :>>= respondJSON
-          open = do
+          handleJSON :: forall a. IsForeign a => (a -> _) -> _
+          handleJSON handler = do
             body <- readBody
             case runExcept $ readJSON body of
-              Right (OpenRequest or) -> do
-                _ <- liftEff $ spawn "explorer" (pure $ concat [dir, or.path]) defaultSpawnOptions
-                respondJSON "{}"
+              Right x -> do
+                handler x
               Left e -> do
                 writeStatus statusBadRequest
                 headers []
                 respond $ "you gave me bad JSON!!!\n" <> show e <> "\nin\n" <> body
+          open = handleJSON \(OpenRequest or) -> do
+            _ <- liftEff $ spawn "explorer" (pure $ concat [dir, or.path]) defaultSpawnOptions
+            respondJSON "{}"
           queryDB' query params = lift' $ queryDB db query params
-          update = do
-            body <- readBody
-            case runExcept $ readJSON body of
-              Right (UpdateRequest ur) -> do
-                _ <- if ur.watched
-                  then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [ur.path]
-                  else queryDB' "DELETE FROM watched WHERE path = $1" [ur.path]
-                watched
-              Left e -> do
-                writeStatus statusBadRequest
-                headers []
-                respond $ "you gave me bad JSON!!!\n" <> show e <> "\nin\n" <> body
+          update = handleJSON \(UpdateRequest ur) -> do
+            _ <- if ur.watched
+              then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [ur.path]
+              else queryDB' "DELETE FROM watched WHERE path = $1" [ur.path]
+            watched
           watched = do
             -- should come back as [{path :: String, created :: String}]
             -- demand refund if not
