@@ -1,6 +1,6 @@
 import {Observable} from 'rxjs';
 import run from '@cycle/rxjs-run'
-import {makeDOMDriver, div, h1, button, a} from '@cycle/dom';
+import {makeDOMDriver, div, h1, button, a, span} from '@cycle/dom';
 import {makeHTTPDriver} from '@cycle/http';
 
 function main(sources) {
@@ -17,12 +17,13 @@ function main(sources) {
       div('', {
         style: {
           margin: '0 auto',
-          width: '800px'
+          width: '1024px'
         }
       }, [
         h1('', {}, 'Filetracker'),
         div('.files', {}, files.map(file => {
-          const watched = data.filter(x => x.path === file).length > 0;
+          const matches = data.filter(x => x.path === file);
+          const watched = matches.length > 0;
           return div('.file', {
             style: {
               display: 'flex',
@@ -48,7 +49,13 @@ function main(sources) {
                 file,
                 watched
               }
-            }, watched ? 'watched' : 'not watched')
+            }, watched ? 'watched' : 'not watched'),
+            span('', {
+              style: {
+                width: '150px',
+                margin: '0 10px'
+              }
+            }, watched ? new Date(matches[0].created).toDateString() : null)
           ])
         }))
       ])
