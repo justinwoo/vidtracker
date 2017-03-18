@@ -1,9 +1,9 @@
 module Main where
 
 import Prelude
-import Data.Foreign.Generic as DFG
+import Types
 import Control.IxMonad (ibind, (:*>), (:>>=))
-import Control.Monad.Aff (Aff, Canceler, launchAff)
+import Control.Monad.Aff (Canceler, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
@@ -14,7 +14,6 @@ import Control.Monad.Except (runExcept)
 import Data.Array (filter, sortBy)
 import Data.Either (Either(..))
 import Data.Foreign.Class (class IsForeign, readJSON, write)
-import Data.Generic.Rep (class Generic)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
@@ -22,7 +21,7 @@ import Data.String (Pattern(..), contains)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Global.Unsafe (unsafeStringify)
-import Hyper.Middleware (Middleware(..), lift')
+import Hyper.Middleware (lift')
 import Hyper.Middleware.Class (getConn)
 import Hyper.Node.FileServer (fileServer)
 import Hyper.Node.Server (defaultOptions, runServer)
@@ -39,21 +38,6 @@ import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Process (PROCESS, lookupEnv)
 import SQLite3 (DBConnection, DBEffects, newDB, queryDB)
-
-newtype OpenRequest = OpenRequest
-  { path :: String
-  }
-derive instance grOR :: Generic OpenRequest _
-instance ifOR :: IsForeign OpenRequest where
-  read = DFG.readGeneric $ DFG.defaultOptions {unwrapSingleConstructors = true}
-
-newtype UpdateRequest = UpdateRequest
-  { path :: String
-  , watched :: Boolean
-  }
-derive instance grUR :: Generic UpdateRequest _
-instance ifUR :: IsForeign UpdateRequest where
-  read = DFG.readGeneric $ DFG.defaultOptions {unwrapSingleConstructors = true}
 
 newtype Config = Config
   { db :: DBConnection
@@ -125,13 +109,13 @@ main = launchAff $
                 headers []
                 respond $ "you gave me bad JSON!!!\n" <> show e <> "\nin\n" <> body
           open = handleJSON \(OpenRequest or) -> do
-            _ <- liftEff $ spawn "explorer" (pure $ concat [dir, or.path]) defaultSpawnOptions
+            _ <- liftEff $ spawn "explorer" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
             respondJSON "{}"
           queryDB' query params = lift' $ queryDB db query params
-          update = handleJSON \(UpdateRequest ur) -> do
+          update = handleJSON \(FileData ur) -> do
             _ <- if ur.watched
-              then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [ur.path]
-              else queryDB' "DELETE FROM watched WHERE path = $1" [ur.path]
+              then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
+              else queryDB' "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
             watched
           watched = do
             -- should come back as [{path :: String, created :: String}]
