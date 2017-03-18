@@ -1,6 +1,7 @@
 module FrontEnd where
 
 import Prelude
+import Data.JSDate as JSDate
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
@@ -15,12 +16,13 @@ import Control.Monad.Aff.Console (CONSOLE, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import DOM (DOM)
 import Data.Array ((:))
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
-import Data.Foreign.Class (class AsForeign, class IsForeign, readJSON, write)
+import Data.Foreign.Class (class IsForeign, readJSON, write)
 import Data.HTTP.Method (Method(POST))
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
@@ -97,10 +99,11 @@ ui =
               [ HH.text $ maybe "not watched" (const "watched") watched ]
             , HH.span
               [ HP.class_ $ wrap "file-note" ]
-              [ HH.text $ maybe "" (\(WatchedData {created}) -> created) watched ]
+              [ HH.text $ maybe "" id watched ]
             ]
           where
-            watched = find (\(WatchedData fd) -> fd.path == path) state.watched
+            watched = getDate <$> find (\(WatchedData fd) -> fd.path == path) state.watched
+            getDate (WatchedData {created}) = JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
 
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
