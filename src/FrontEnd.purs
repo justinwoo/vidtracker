@@ -135,12 +135,12 @@ ui =
         toJSON = unsafeStringify <<< write
 
     eval (SetWatched path flag next) = do
-      w :: FE (Array WatchedData) <- postJSON "/api/update" $ FileData {path, watched: flag}
-      case w of
-        Right watched ->
-          H.modify \s -> s {watched = watched}
+      parsed :: FE (Array WatchedData) <- postJSON "/api/update" $ FileData {path, watched: flag}
+      case parsed of
+        Right w ->
+          H.modify \s -> s {watched = w}
         Left e -> do
-          let errors = show e
+          H.liftAff $ error $ show e
           pure unit
       pure next
       where

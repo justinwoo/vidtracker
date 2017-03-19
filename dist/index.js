@@ -32848,8 +32848,9 @@ var ui = (function () {
                         });
                     };
                     if (v1 instanceof Data_Either.Left) {
-                        var errors = Data_Show.show(Data_List_Types.showNonEmptyList(Data_Foreign.showForeignError))(v1.value0);
-                        return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(Data_Unit.unit);
+                        return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_Aff_Class.liftAff(Halogen_Query_HalogenM.monadAffHalogenM(Control_Monad_Aff_Class.monadAffAff))(Control_Monad_Aff_Console.error(Data_Show.show(Data_List_Types.showNonEmptyList(Data_Foreign.showForeignError))(v1.value0))))(function () {
+                            return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(Data_Unit.unit);
+                        });
                     };
                     throw new Error("Failed pattern match at FrontEnd line 139, column 7 - line 144, column 20: " + [ v1.constructor.name ]);
                 })())(function () {
