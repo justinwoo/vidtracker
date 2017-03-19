@@ -11,8 +11,7 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax as AJ
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Aff.Console (CONSOLE, log)
+import Control.Monad.Aff.Console (CONSOLE, error, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF)
@@ -20,7 +19,7 @@ import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import DOM (DOM)
 import Data.Array ((:))
-import Data.Either (Either(..), either)
+import Data.Either (Either(Left, Right))
 import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class IsForeign, readJSON, write)
 import Data.HTTP.Method (Method(POST))
@@ -55,6 +54,7 @@ data Query a
 type AppEffects eff =
   Aff
   ( ajax :: AJAX
+  , console :: CONSOLE
   | eff )
 
 ui :: forall eff. H.Component HH.HTML Query Unit Void (AppEffects eff)
@@ -107,20 +107,26 @@ ui =
 
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
-      f :: FE (Array Path) <- getJSON "/api/files"
-      w :: FE (Array WatchedData) <- getJSON "/api/watched"
-      case Tuple f w of
-        Tuple (Right files) (Right watched) ->
-          H.modify \s -> s {files = files, watched = watched}
-        _ -> do
-          -- probably mistakes were made here in eagerly converting from except
-          -- maybe some day this will get fixed
-          let errors = [either show (const "") f, either show (const "") w]
-          pure unit
+      result <- getResult
+      case result of
+        Right (Tuple f w) ->
+          H.modify \s -> s {files = f, watched = w}
+        Left e ->
+          H.liftAff $ error $ show e
       pure next
       where
-        getJSON :: forall a. IsForeign a => String -> _ (Either _ a)
+        getJSON :: forall a. IsForeign a => String -> _ (FE a)
         getJSON url = H.liftAff $ parseResponse <$> AJ.get url
+        getResult :: _ (FE (Tuple (Array Path) (Array WatchedData)))
+        getResult =
+          f
+            <$> getJSON "/api/files"
+            <*> getJSON "/api/watched"
+          where
+            f (Left a) (Left b) = Left $ a <> b
+            f (Left e) _ = Left e
+            f _ (Left e) = Left e
+            f (Right a) (Right b) = Right $ Tuple a b
 
     eval (OpenFile path next) = do
       H.liftAff $ AJ.post_ "/api/open" $ toJSON (OpenRequest {path})

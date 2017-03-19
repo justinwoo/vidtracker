@@ -32645,7 +32645,6 @@ var Halogen_VDom_Driver = require("../Halogen.VDom.Driver");
 var Network_HTTP_Affjax = require("../Network.HTTP.Affjax");
 var Control_Monad_Aff = require("../Control.Monad.Aff");
 var Control_Monad_Aff_AVar = require("../Control.Monad.Aff.AVar");
-var Control_Monad_Aff_Class = require("../Control.Monad.Aff.Class");
 var Control_Monad_Aff_Console = require("../Control.Monad.Aff.Console");
 var Control_Monad_Eff = require("../Control.Monad.Eff");
 var Control_Monad_Eff_Exception = require("../Control.Monad.Eff.Exception");
@@ -32675,15 +32674,18 @@ var Halogen_HTML_Elements = require("../Halogen.HTML.Elements");
 var Halogen_HTML_Core = require("../Halogen.HTML.Core");
 var Data_HeytingAlgebra = require("../Data.HeytingAlgebra");
 var Control_Category = require("../Control.Category");
+var Control_Monad_Aff_Class = require("../Control.Monad.Aff.Class");
 var Halogen_Query_HalogenM = require("../Halogen.Query.HalogenM");
 var Network_HTTP_Affjax_Response = require("../Network.HTTP.Affjax.Response");
+var Data_Semigroup = require("../Data.Semigroup");
+var Data_List_Types = require("../Data.List.Types");
+var Control_Apply = require("../Control.Apply");
 var Control_Bind = require("../Control.Bind");
 var Control_Monad_State_Class = require("../Control.Monad.State.Class");
 var Data_Show = require("../Data.Show");
-var Data_List_Types = require("../Data.List.Types");
 var Control_Applicative = require("../Control.Applicative");
-var Data_Unit = require("../Data.Unit");
 var Network_HTTP_Affjax_Request = require("../Network.HTTP.Affjax.Request");
+var Data_Unit = require("../Data.Unit");
 var Halogen_Component = require("../Halogen.Component");
 var Halogen_Query = require("../Halogen.Query");
 var Halogen_Aff_Util = require("../Halogen.Aff.Util");
@@ -32752,34 +32754,53 @@ var ui = (function () {
                     return Control_Monad_Aff_Class.liftAff(Halogen_Query_HalogenM.monadAffHalogenM(Control_Monad_Aff_Class.monadAffAff))(Data_Functor.map(Control_Monad_Aff.functorAff)(parseResponse(dictIsForeign))(Network_HTTP_Affjax.get(Network_HTTP_Affjax_Response.responsableString)(url)));
                 };
             };
-            return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(getJSON(Data_Foreign_Class.arrayIsForeign(Types.isPath))("/api/files"))(function (v1) {
-                return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(getJSON(Data_Foreign_Class.arrayIsForeign(Types.ifWD))("/api/watched"))(function (v2) {
-                    return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)((function () {
-                        var $19 = new Data_Tuple.Tuple(v1, v2);
-                        if ($19.value0 instanceof Data_Either.Right && $19.value1 instanceof Data_Either.Right) {
-                            return Control_Monad_State_Class.modify(Halogen_Query_HalogenM.monadStateHalogenM)(function (s) {
-                                var $20 = {};
-                                for (var $21 in s) {
-                                    if ({}.hasOwnProperty.call(s, $21)) {
-                                        $20[$21] = s[$21];
-                                    };
-                                };
-                                $20.files = $19.value0.value0;
-                                $20.watched = $19.value1.value0;
-                                return $20;
-                            });
+            var getResult = (function () {
+                var f = function (v1) {
+                    return function (v2) {
+                        if (v1 instanceof Data_Either.Left && v2 instanceof Data_Either.Left) {
+                            return Data_Either.Left.create(Data_Semigroup.append(Data_List_Types.semigroupNonEmptyList)(v1.value0)(v2.value0));
                         };
-                        var errors = [ Data_Either.either(Data_Show.show(Data_List_Types.showNonEmptyList(Data_Foreign.showForeignError)))(Data_Function["const"](""))(v1), Data_Either.either(Data_Show.show(Data_List_Types.showNonEmptyList(Data_Foreign.showForeignError)))(Data_Function["const"](""))(v2) ];
-                        return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(Data_Unit.unit);
-                    })())(function () {
-                        return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0);
-                    });
+                        if (v1 instanceof Data_Either.Left) {
+                            return new Data_Either.Left(v1.value0);
+                        };
+                        if (v2 instanceof Data_Either.Left) {
+                            return new Data_Either.Left(v2.value0);
+                        };
+                        if (v1 instanceof Data_Either.Right && v2 instanceof Data_Either.Right) {
+                            return Data_Either.Right.create(new Data_Tuple.Tuple(v1.value0, v2.value0));
+                        };
+                        throw new Error("Failed pattern match at FrontEnd line 126, column 13 - line 126, column 48: " + [ v1.constructor.name, v2.constructor.name ]);
+                    };
+                };
+                return Control_Apply.apply(Halogen_Query_HalogenM.applyHalogenM)(Data_Functor.map(Halogen_Query_HalogenM.functorHalogenM)(f)(getJSON(Data_Foreign_Class.arrayIsForeign(Types.isPath))("/api/files")))(getJSON(Data_Foreign_Class.arrayIsForeign(Types.ifWD))("/api/watched"));
+            })();
+            return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(getResult)(function (v1) {
+                return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)((function () {
+                    if (v1 instanceof Data_Either.Right) {
+                        return Control_Monad_State_Class.modify(Halogen_Query_HalogenM.monadStateHalogenM)(function (s) {
+                            var $28 = {};
+                            for (var $29 in s) {
+                                if ({}.hasOwnProperty.call(s, $29)) {
+                                    $28[$29] = s[$29];
+                                };
+                            };
+                            $28.files = v1.value0.value0;
+                            $28.watched = v1.value0.value1;
+                            return $28;
+                        });
+                    };
+                    if (v1 instanceof Data_Either.Left) {
+                        return Control_Monad_Aff_Class.liftAff(Halogen_Query_HalogenM.monadAffHalogenM(Control_Monad_Aff_Class.monadAffAff))(Control_Monad_Aff_Console.error(Data_Show.show(Data_List_Types.showNonEmptyList(Data_Foreign.showForeignError))(v1.value0)));
+                    };
+                    throw new Error("Failed pattern match at FrontEnd line 111, column 7 - line 115, column 37: " + [ v1.constructor.name ]);
+                })())(function () {
+                    return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0);
                 });
             });
         };
         if (v instanceof OpenFile) {
-            var toJSON = function ($45) {
-                return Global_Unsafe.unsafeStringify(Data_Foreign_Class.write(Types.afOR)($45));
+            var toJSON = function ($53) {
+                return Global_Unsafe.unsafeStringify(Data_Foreign_Class.write(Types.afOR)($53));
             };
             return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_Aff_Class.liftAff(Halogen_Query_HalogenM.monadAffHalogenM(Control_Monad_Aff_Class.monadAffAff))(Network_HTTP_Affjax.post_(Network_HTTP_Affjax_Request.requestableString)("/api/open")(toJSON({
                 path: v.value0
@@ -32791,16 +32812,16 @@ var ui = (function () {
             var post = function (u) {
                 return function (c) {
                     return Network_HTTP_Affjax.affjax(Network_HTTP_Affjax_Request.requestableString)(Network_HTTP_Affjax_Response.responsableString)((function () {
-                        var $30 = {};
-                        for (var $31 in Network_HTTP_Affjax.defaultRequest) {
-                            if ({}.hasOwnProperty.call(Network_HTTP_Affjax.defaultRequest, $31)) {
-                                $30[$31] = Network_HTTP_Affjax["defaultRequest"][$31];
+                        var $38 = {};
+                        for (var $39 in Network_HTTP_Affjax.defaultRequest) {
+                            if ({}.hasOwnProperty.call(Network_HTTP_Affjax.defaultRequest, $39)) {
+                                $38[$39] = Network_HTTP_Affjax["defaultRequest"][$39];
                             };
                         };
-                        $30.method = new Data_Either.Left(Data_HTTP_Method.POST.value);
-                        $30.url = u;
-                        $30.content = new Data_Maybe.Just(c);
-                        return $30;
+                        $38.method = new Data_Either.Left(Data_HTTP_Method.POST.value);
+                        $38.url = u;
+                        $38.content = new Data_Maybe.Just(c);
+                        return $38;
                     })());
                 };
             };
@@ -32816,27 +32837,27 @@ var ui = (function () {
                 return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)((function () {
                     if (v1 instanceof Data_Either.Right) {
                         return Control_Monad_State_Class.modify(Halogen_Query_HalogenM.monadStateHalogenM)(function (s) {
-                            var $35 = {};
-                            for (var $36 in s) {
-                                if ({}.hasOwnProperty.call(s, $36)) {
-                                    $35[$36] = s[$36];
+                            var $43 = {};
+                            for (var $44 in s) {
+                                if ({}.hasOwnProperty.call(s, $44)) {
+                                    $43[$44] = s[$44];
                                 };
                             };
-                            $35.watched = v1.value0;
-                            return $35;
+                            $43.watched = v1.value0;
+                            return $43;
                         });
                     };
                     if (v1 instanceof Data_Either.Left) {
                         var errors = Data_Show.show(Data_List_Types.showNonEmptyList(Data_Foreign.showForeignError))(v1.value0);
                         return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(Data_Unit.unit);
                     };
-                    throw new Error("Failed pattern match at FrontEnd line 133, column 7 - line 138, column 20: " + [ v1.constructor.name ]);
+                    throw new Error("Failed pattern match at FrontEnd line 139, column 7 - line 144, column 20: " + [ v1.constructor.name ]);
                 })())(function () {
                     return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value2);
                 });
             });
         };
-        throw new Error("Failed pattern match at FrontEnd line 109, column 5 - line 123, column 63: " + [ v.constructor.name ]);
+        throw new Error("Failed pattern match at FrontEnd line 109, column 5 - line 129, column 54: " + [ v.constructor.name ]);
     };
     return Halogen_Component.lifecycleComponent(Halogen_HTML_Core.bifunctorHTML)({
         initialState: Data_Function["const"](initialState), 
@@ -32861,7 +32882,7 @@ module.exports = {
     ui: ui
 };
 
-},{"../Control.Applicative":5,"../Control.Bind":11,"../Control.Category":12,"../Control.Monad.Aff":24,"../Control.Monad.Aff.AVar":17,"../Control.Monad.Aff.Class":18,"../Control.Monad.Aff.Console":19,"../Control.Monad.Eff":37,"../Control.Monad.Eff.Exception":31,"../Control.Monad.Eff.Ref":33,"../Control.Monad.Eff.Unsafe":35,"../Control.Monad.Except":40,"../Control.Monad.State.Class":54,"../Control.Semigroupoid":66,"../DOM":107,"../Data.Array":115,"../Data.Either":144,"../Data.Eq":147,"../Data.Foldable":153,"../Data.Foreign":166,"../Data.Foreign.Class":154,"../Data.Function":170,"../Data.Functor":177,"../Data.HTTP.Method":181,"../Data.HeytingAlgebra":183,"../Data.JSDate":191,"../Data.List.NonEmpty":219,"../Data.List.Types":220,"../Data.Maybe":225,"../Data.Monoid":234,"../Data.Newtype":236,"../Data.Show":259,"../Data.Traversable":273,"../Data.Tuple":274,"../Data.Unit":278,"../Global.Unsafe":282,"../Halogen":313,"../Halogen.Aff":290,"../Halogen.Aff.Util":289,"../Halogen.Component":292,"../Halogen.HTML":299,"../Halogen.HTML.Core":295,"../Halogen.HTML.Elements":296,"../Halogen.HTML.Events":297,"../Halogen.HTML.Properties":298,"../Halogen.Query":304,"../Halogen.Query.HalogenM":302,"../Halogen.VDom.Driver":307,"../Network.HTTP.Affjax":319,"../Network.HTTP.Affjax.Request":316,"../Network.HTTP.Affjax.Response":317,"../Prelude":327,"../Types":329}],281:[function(require,module,exports){
+},{"../Control.Applicative":5,"../Control.Apply":7,"../Control.Bind":11,"../Control.Category":12,"../Control.Monad.Aff":24,"../Control.Monad.Aff.AVar":17,"../Control.Monad.Aff.Class":18,"../Control.Monad.Aff.Console":19,"../Control.Monad.Eff":37,"../Control.Monad.Eff.Exception":31,"../Control.Monad.Eff.Ref":33,"../Control.Monad.Eff.Unsafe":35,"../Control.Monad.Except":40,"../Control.Monad.State.Class":54,"../Control.Semigroupoid":66,"../DOM":107,"../Data.Array":115,"../Data.Either":144,"../Data.Eq":147,"../Data.Foldable":153,"../Data.Foreign":166,"../Data.Foreign.Class":154,"../Data.Function":170,"../Data.Functor":177,"../Data.HTTP.Method":181,"../Data.HeytingAlgebra":183,"../Data.JSDate":191,"../Data.List.NonEmpty":219,"../Data.List.Types":220,"../Data.Maybe":225,"../Data.Monoid":234,"../Data.Newtype":236,"../Data.Semigroup":255,"../Data.Show":259,"../Data.Traversable":273,"../Data.Tuple":274,"../Data.Unit":278,"../Global.Unsafe":282,"../Halogen":313,"../Halogen.Aff":290,"../Halogen.Aff.Util":289,"../Halogen.Component":292,"../Halogen.HTML":299,"../Halogen.HTML.Core":295,"../Halogen.HTML.Elements":296,"../Halogen.HTML.Events":297,"../Halogen.HTML.Properties":298,"../Halogen.Query":304,"../Halogen.Query.HalogenM":302,"../Halogen.VDom.Driver":307,"../Network.HTTP.Affjax":319,"../Network.HTTP.Affjax.Request":316,"../Network.HTTP.Affjax.Response":317,"../Prelude":327,"../Types":329}],281:[function(require,module,exports){
 /* globals exports, JSON */
 "use strict";
 
