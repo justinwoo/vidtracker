@@ -11,7 +11,7 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax as AJ
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Console (CONSOLE, error, log)
+import Control.Monad.Aff.Console (CONSOLE, errorShow, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF)
@@ -19,7 +19,7 @@ import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import DOM (DOM)
 import Data.Array ((:))
-import Data.Either (Either(Left, Right))
+import Data.Either (Either(Left, Right), either)
 import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class IsForeign, readJSON, write)
 import Data.HTTP.Method (Method(POST))
@@ -29,9 +29,12 @@ import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
+import Data.Validation.Semigroup (V, invalid, unV)
 import Global.Unsafe (unsafeStringify)
 import Network.HTTP.Affjax (AJAX)
 import Types (FileData(..), OpenRequest(..), Path, WatchedData(..))
+
+type VE a = V (NonEmptyList ForeignError) a
 
 type FE a = Either (NonEmptyList ForeignError) a
 parseResponse :: forall t4 t7.
@@ -108,25 +111,19 @@ ui =
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
       result <- getResult
-      case result of
-        Right (Tuple f w) ->
-          H.modify \s -> s {files = f, watched = w}
-        Left e ->
-          H.liftAff $ error $ show e
+      unV
+        (H.liftAff <<< errorShow)
+        (\(Tuple f w) -> H.modify \s -> s {files = f, watched = w})
+        result
       pure next
       where
-        getJSON :: forall a. IsForeign a => String -> _ (FE a)
-        getJSON url = H.liftAff $ parseResponse <$> AJ.get url
-        getResult :: _ (FE (Tuple (Array Path) (Array WatchedData)))
-        getResult =
-          f
-            <$> getJSON "/api/files"
-            <*> getJSON "/api/watched"
-          where
-            f (Left a) (Left b) = Left $ a <> b
-            f (Left e) _ = Left e
-            f _ (Left e) = Left e
-            f (Right a) (Right b) = Right $ Tuple a b
+        getJSON :: forall a. IsForeign a => String -> _ (VE a)
+        getJSON url = H.liftAff $ either invalid pure <$> parseResponse <$> AJ.get url
+        getResult :: _ (VE (Tuple (Array Path) (Array WatchedData)))
+        getResult = do
+          files <- getJSON "/api/files"
+          watched  <- getJSON "/api/watched"
+          pure $ Tuple <$> files <*> watched
 
     eval (OpenFile path next) = do
       H.liftAff $ AJ.post_ "/api/open" $ toJSON (OpenRequest {path})
@@ -140,7 +137,7 @@ ui =
         Right w ->
           H.modify \s -> s {watched = w}
         Left e -> do
-          H.liftAff $ error $ show e
+          H.liftAff $ errorShow e
           pure unit
       pure next
       where
