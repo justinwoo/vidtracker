@@ -60,3 +60,11 @@ instance ifWD :: IsForeign WatchedData where
   read = readGeneric'
 instance afWD :: AsForeign WatchedData where
   write = toForeignGeneric'
+
+newtype Success = Success
+  { status :: String }
+derive instance grSC :: Generic Success _
+instance ifSC :: IsForeign Success where
+  read = readGeneric'
+instance afSC :: AsForeign Success where
+  write = toForeignGeneric'

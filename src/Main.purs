@@ -110,7 +110,7 @@ main = launchAff $
                 respond $ "you gave me bad JSON!!!\n" <> show e <> "\nin\n" <> body
           open = handleJSON \(OpenRequest or) -> do
             _ <- liftEff $ spawn "explorer" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
-            respondJSON "{}"
+            respondJSON <<< unsafeStringify <<< write $ Success {status: "success"}
           queryDB' query params = lift' $ queryDB db query params
           update = handleJSON \(FileData ur) -> do
             _ <- if ur.watched

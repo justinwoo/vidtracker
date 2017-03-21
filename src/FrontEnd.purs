@@ -11,6 +11,7 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax as AJ
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Console (CONSOLE, errorShow, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
@@ -19,10 +20,9 @@ import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import DOM (DOM)
 import Data.Array ((:))
-import Data.Either (Either(Left, Right), either)
+import Data.Either (Either(Left), either)
 import Data.Foreign (ForeignError)
-import Data.Foreign.Class (class IsForeign, readJSON, write)
-import Data.HTTP.Method (Method(POST))
+import Data.Foreign.Class (class AsForeign, class IsForeign, readJSON, write)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
 import Data.Monoid (mempty)
@@ -32,17 +32,39 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import Global.Unsafe (unsafeStringify)
 import Network.HTTP.Affjax (AJAX)
+import Routes (Route(..), files, open, update, watched)
 import Types (FileData(..), OpenRequest(..), Path, WatchedData(..))
 
 type VE a = V (NonEmptyList ForeignError) a
 
-type FE a = Either (NonEmptyList ForeignError) a
-parseResponse :: forall t4 t7.
-  (IsForeign t4) => { response :: String
-                    | t7
-                    }
-                    -> Either (NonEmptyList ForeignError) t4
-parseResponse response = runExcept $ readJSON response.response
+request :: forall req res m eff.
+  ( MonadAff
+      ( ajax :: AJAX
+      | eff
+      )
+      m
+  , AsForeign req
+  , IsForeign res
+  ) => Route req res -> Maybe req -> m (VE res)
+request (Route route) body =
+  H.liftAff $ either invalid pure <$> parseResponse <$> action
+  where
+    action = AJ.affjax $ AJ.defaultRequest
+      { method = Left route.method
+      , url = route.url
+      , content = unsafeStringify <<< write <$> body
+      }
+    parseResponse response =
+      runExcept $ readJSON response.response
+
+unV' :: forall e a m.
+  ( MonadAff
+    ( console :: CONSOLE
+    | e
+    )
+    m
+  ) => (a -> m Unit) -> VE a -> m Unit
+unV' = unV (H.liftAff <<< errorShow)
 
 type State =
   { files :: Array Path
@@ -110,40 +132,23 @@ ui =
 
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
-      result <- getResult
-      unV
-        (H.liftAff <<< errorShow)
-        (\(Tuple f w) -> H.modify \s -> s {files = f, watched = w})
-        result
+      getResult >>= unV'
+        \(Tuple f w) -> H.modify _ {files = f, watched = w}
       pure next
       where
-        getJSON :: forall a. IsForeign a => String -> _ (VE a)
-        getJSON url = H.liftAff $ either invalid pure <$> parseResponse <$> AJ.get url
-        getResult :: _ (VE (Tuple (Array Path) (Array WatchedData)))
         getResult = do
-          files <- getJSON "/api/files"
-          watched  <- getJSON "/api/watched"
+          files <- request files Nothing
+          watched <- request watched Nothing
           pure $ Tuple <$> files <*> watched
 
     eval (OpenFile path next) = do
-      H.liftAff $ AJ.post_ "/api/open" $ toJSON (OpenRequest {path})
+      request open $ Just (OpenRequest {path})
       pure next
-      where
-        toJSON = unsafeStringify <<< write
 
     eval (SetWatched path flag next) = do
-      parsed :: FE (Array WatchedData) <- postJSON "/api/update" $ FileData {path, watched: flag}
-      case parsed of
-        Right w ->
-          H.modify \s -> s {watched = w}
-        Left e -> do
-          H.liftAff $ errorShow e
-          pure unit
+      request update (Just $ FileData {path, watched: flag}) >>= unV'
+        \w -> H.modify _ {watched = w}
       pure next
-      where
-        postJSON url payload = H.liftAff $ parseResponse <$> post url (unsafeStringify $ write payload)
-        post u c =
-          AJ.affjax $ AJ.defaultRequest {method = Left POST, url = u, content = Just c}
 
 main :: forall e.
   Eff
