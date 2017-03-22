@@ -1,9 +1,9 @@
 module Main where
 
 import Prelude
-import Types
+import Types (FileData(..), OpenRequest(..), Path(..), Success(..))
 import Control.IxMonad (ibind, (:*>), (:>>=))
-import Control.Monad.Aff (Canceler, launchAff)
+import Control.Monad.Aff (Aff, Canceler, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
@@ -12,10 +12,10 @@ import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Except (runExcept)
 import Data.Array (filter, sortBy)
-import Data.Either (Either(..))
-import Data.Foreign.Class (class IsForeign, readJSON, write)
-import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..))
+import Data.Either (Either(..), either)
+import Data.Foreign.Class (class AsForeign, class IsForeign, readJSON, write)
+import Data.HTTP.Method (CustomMethod, Method)
+import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
 import Data.String (Pattern(..), contains)
 import Data.Traversable (traverse)
@@ -37,7 +37,24 @@ import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Process (PROCESS, lookupEnv)
+import Routes (Route(Route), files, open, update, watched)
 import SQLite3 (DBConnection, DBEffects, newDB, queryDB)
+
+readdir' :: forall eff.
+  String
+  -> Aff
+       ( fs :: FS
+       | eff
+       )
+       (Array Path)
+readdir' path = do
+  withStats <- traverse pairWithStat =<< filter (contains (Pattern "mkv")) <$> readdir path
+  pure $ Path <<< fst <$> sortByDate withStats
+  where
+    pairWithStat file = do
+      s <- stat $ concat [path, file]
+      pure (Tuple file s)
+    sortByDate = sortBy <<< flip $ comparing (modifiedTime <<< snd)
 
 newtype Config = Config
   { db :: DBConnection
@@ -79,46 +96,51 @@ main = launchAff $
       writeStatus statusOK
       :*> headers [Tuple "Content-Type" "application/json"]
       :*> respond json
-    readFiles path = lift' $ unsafeStringify <<< write <$> readdir'
-      where
-        readdir' = do
-          withStats <- traverse pairWithStat =<< filter (contains (Pattern "mkv")) <$> readdir path
-          pure $ fst <$> sortByDate withStats
-        pairWithStat file = do
-          s <- stat $ concat [path, file]
-          pure (Tuple file s)
-        sortByDate = sortBy <<< flip $ comparing (modifiedTime <<< snd)
-    handleConn conn@{components: Config {dir, db}} =
+    respondJSON' :: forall a. (AsForeign a) => a -> _
+    respondJSON' = respondJSON <<< unsafeStringify <<< write
+    respondBadRequest e =
+      writeStatus statusBadRequest
+      :*> headers []
+      :*> respond ("bad JSON: " <> show e)
+    handleConn conn@{components: Config {dir, db}} = do
       case Tuple conn.request.method conn.request.url of
-        Tuple (Left GET) "/api/files" -> files
-        Tuple (Left GET) "/api/watched" -> watched
-        Tuple (Left POST) "/api/update" -> update
-        Tuple (Left POST) "/api/open" -> open
-        _ -> fileServer "dist" notFound
+        t
+          | match t files -> files'
+          | match t watched -> watched'
+          | match t open -> open'
+          | match t update -> update'
+          | otherwise -> fileServer "dist" notFound
         where
           bind = ibind
-          files = readFiles dir :>>= respondJSON
-          handleJSON :: forall a. IsForeign a => (a -> _) -> _
-          handleJSON handler = do
+          match :: forall req res. Tuple (Either Method CustomMethod) String -> Route req res -> Boolean
+          match (Tuple m u) (Route {method, url}) =
+            case m of
+              Left m' -> m' == method && u == url
+              _ -> false
+          withBody :: forall a. IsForeign a => (a -> _) -> _
+          withBody handler = do
             body <- readBody
-            case runExcept $ readJSON body of
-              Right x -> do
-                handler x
-              Left e -> do
-                writeStatus statusBadRequest
-                headers []
-                respond $ "you gave me bad JSON!!!\n" <> show e <> "\nin\n" <> body
-          open = handleJSON \(OpenRequest or) -> do
+            either
+              respondBadRequest
+              handler
+              (runExcept $ readJSON body)
+
+          files' = do
+            files <- lift' $ readdir' dir
+            respondJSON' files
+
+          watched' = do
+            rows <- queryDB' "SELECT path, created FROM watched;" []
+            respondJSON $ unsafeStringify rows
+
+          open' = withBody \(OpenRequest or) -> do
             _ <- liftEff $ spawn "explorer" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
-            respondJSON <<< unsafeStringify <<< write $ Success {status: "success"}
-          queryDB' query params = lift' $ queryDB db query params
-          update = handleJSON \(FileData ur) -> do
+            respondJSON' $ Success {status: "success"}
+
+          update' = withBody \(FileData ur) -> do
             _ <- if ur.watched
               then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
               else queryDB' "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
-            watched
-          watched = do
-            -- should come back as [{path :: String, created :: String}]
-            -- demand refund if not
-            a <- queryDB' "SELECT path, created FROM watched;" []
-            respondJSON $ unsafeStringify a
+            watched'
+
+          queryDB' query params = lift' $ queryDB db query params

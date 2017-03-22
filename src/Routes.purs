@@ -2,14 +2,16 @@ module Routes where
 
 import Data.Foreign.Class (class AsForeign, class IsForeign)
 import Data.HTTP.Method (Method(..))
+import Data.Newtype (class Newtype)
 import Types (FileData, OpenRequest, Path, Success, WatchedData)
 
-data Route req res = Route
+newtype Route req res = Route
   { method :: Method
   , url :: String
   }
 
 newtype Unused = Unused String
+derive instance ntU :: Newtype Unused _
 derive newtype instance isUU :: IsForeign Unused
 derive newtype instance asUU :: AsForeign Unused
 
