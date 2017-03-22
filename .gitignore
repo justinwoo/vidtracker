@@ -5,3 +5,4 @@
 /generated-docs/
 /.psc*
 /.psa*
+/dist/index.js
