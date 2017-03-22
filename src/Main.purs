@@ -36,9 +36,10 @@ import Node.FS.Aff (readdir, stat)
 import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
-import Node.Process (PROCESS, lookupEnv)
+import Node.Platform (Platform(..))
+import Node.Process (PROCESS, lookupEnv, platform)
 import Routes (Route(Route), files, open, update, watched)
-import SQLite3 (DBConnection, DBEffects, newDB, queryDB)
+import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
 
 readdir' :: forall eff.
   String
@@ -48,7 +49,8 @@ readdir' :: forall eff.
        )
        (Array Path)
 readdir' path = do
-  withStats <- traverse pairWithStat =<< filter (contains (Pattern "mkv")) <$> readdir path
+  withStats <- traverse pairWithStat =<< filter (contains (Pattern "mkv"))
+                                     <$> readdir path
   pure $ Path <<< fst <$> sortByDate withStats
   where
     pairWithStat file = do
@@ -59,6 +61,7 @@ readdir' path = do
 newtype Config = Config
   { db :: DBConnection
   , dir :: String
+  , openExe :: String
   }
 
 type AppEffects eff =
@@ -72,6 +75,12 @@ type AppEffects eff =
   , buffer :: BUFFER
   | eff )
 
+ensureDB :: forall eff. FilePath -> Aff (db :: DBEffects | eff) DBConnection
+ensureDB path = do
+  db <- newDB path
+  queryDB db "CREATE TABLE IF NOT EXISTS watched (path varchar(20) primary key unique, created datetime);" []
+  pure db
+
 main :: forall eff.
   Eff (AppEffects (err :: EXCEPTION | eff))
     (Canceler (AppEffects eff))
@@ -80,8 +89,11 @@ main = launchAff $
   case _ of
     Nothing -> error "we done broke now!!!!"
     Just dir -> do
-      db <- newDB $ concat [dir, "filetracker"]
-      let config = Config {db, dir}
+      db <- ensureDB $ concat [dir, "filetracker"]
+      let openExe = case platform of
+                      Darwin -> "open"
+                      _      -> "explorer"
+      let config = Config {db, dir, openExe}
       liftEff $ runServer options config router
   where
     router = getConn :>>= handleConn
@@ -102,7 +114,7 @@ main = launchAff $
       writeStatus statusBadRequest
       :*> headers []
       :*> respond ("bad JSON: " <> show e)
-    handleConn conn@{components: Config {dir, db}} = do
+    handleConn conn@{components: Config {dir, db, openExe}} =
       case Tuple conn.request.method conn.request.url of
         t
           | match t files -> files'
@@ -134,7 +146,7 @@ main = launchAff $
             respondJSON $ unsafeStringify rows
 
           open' = withBody \(OpenRequest or) -> do
-            _ <- liftEff $ spawn "explorer" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+            _ <- liftEff $ spawn openExe (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
             respondJSON' $ Success {status: "success"}
 
           update' = withBody \(FileData ur) -> do
