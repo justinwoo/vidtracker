@@ -129,8 +129,8 @@ main = launchAff $
             case m of
               Left m' -> m' == method && u == url
               _ -> false
-          withBody :: forall a. IsForeign a => (a -> _) -> _
-          withBody handler = do
+          withBody :: forall req res. IsForeign req => Route req res -> (req -> _) -> _
+          withBody _ handler = do
             body <- readBody
             either
               respondBadRequest
@@ -145,11 +145,11 @@ main = launchAff $
             rows <- queryDB' "SELECT path, created FROM watched;" []
             respondJSON $ unsafeStringify rows
 
-          handleOpen r = withBody \(OpenRequest or) -> do
+          handleOpen r = withBody r \(OpenRequest or) -> do
             _ <- liftEff $ spawn openExe (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
             respondJSON' r $ Success {status: "success"}
 
-          handleUpdate r = withBody \(FileData ur) -> do
+          handleUpdate r = withBody r \(FileData ur) -> do
             _ <- if ur.watched
               then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
               else queryDB' "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
