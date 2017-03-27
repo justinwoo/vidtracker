@@ -1,7 +1,6 @@
 module Main where
 
 import Prelude
-import Types (FileData(..), OpenRequest(..), Path(..), Success(..))
 import Control.IxMonad (ibind, (:*>), (:>>=))
 import Control.Monad.Aff (Aff, Canceler, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
@@ -40,6 +39,7 @@ import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
 import Routes (Route(Route), files, open, update, watched)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
+import Types (FileData(..), OpenRequest(..), Path(..), Success(..))
 
 readdir' :: forall eff.
   String
@@ -108,8 +108,8 @@ main = launchAff $
       writeStatus statusOK
       :*> headers [Tuple "Content-Type" "application/json"]
       :*> respond json
-    respondJSON' :: forall a. (AsForeign a) => a -> _
-    respondJSON' = respondJSON <<< unsafeStringify <<< write
+    respondJSON' :: forall req res. (AsForeign res) => Route req res -> res -> _
+    respondJSON' _ = respondJSON <<< unsafeStringify <<< write
     respondBadRequest e =
       writeStatus statusBadRequest
       :*> headers []
@@ -117,10 +117,10 @@ main = launchAff $
     handleConn conn@{components: Config {dir, db, openExe}} =
       case Tuple conn.request.method conn.request.url of
         t
-          | match t files -> files'
-          | match t watched -> watched'
-          | match t open -> open'
-          | match t update -> update'
+          | match t files -> handleFiles files
+          | match t watched -> handleWatched watched
+          | match t open -> handleOpen open
+          | match t update -> handleUpdate update
           | otherwise -> fileServer "dist" notFound
         where
           bind = ibind
@@ -137,22 +137,22 @@ main = launchAff $
               handler
               (runExcept $ readJSON body)
 
-          files' = do
+          handleFiles r = do
             files <- lift' $ readdir' dir
-            respondJSON' files
+            respondJSON' r files
 
-          watched' = do
+          handleWatched r = do
             rows <- queryDB' "SELECT path, created FROM watched;" []
             respondJSON $ unsafeStringify rows
 
-          open' = withBody \(OpenRequest or) -> do
+          handleOpen r = withBody \(OpenRequest or) -> do
             _ <- liftEff $ spawn openExe (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
-            respondJSON' $ Success {status: "success"}
+            respondJSON' r $ Success {status: "success"}
 
-          update' = withBody \(FileData ur) -> do
+          handleUpdate r = withBody \(FileData ur) -> do
             _ <- if ur.watched
               then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
               else queryDB' "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
-            watched'
+            handleWatched watched
 
           queryDB' query params = lift' $ queryDB db query params
