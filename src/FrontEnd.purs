@@ -38,14 +38,14 @@ import Types (FileData(..), OpenRequest(..), Path, WatchedData(..))
 type VE a = V (NonEmptyList ForeignError) a
 
 request :: forall req res m eff.
-  ( MonadAff
-      ( ajax :: AJAX
-      | eff
-      )
-      m
-  , AsForeign req
-  , IsForeign res
-  ) => Route req res -> Maybe req -> m (VE res)
+  MonadAff
+    ( ajax :: AJAX
+    | eff
+    )
+    m
+  => AsForeign req
+  => IsForeign res
+  => Route req res -> Maybe req -> m (VE res)
 request (Route route) body =
   H.liftAff $ either invalid pure <$> parseResponse <$> action
   where
@@ -58,12 +58,12 @@ request (Route route) body =
       runExcept $ readJSON response.response
 
 unV' :: forall e a m.
-  ( MonadAff
+  MonadAff
     ( console :: CONSOLE
     | e
     )
     m
-  ) => (a -> m Unit) -> VE a -> m Unit
+  => (a -> m Unit) -> VE a -> m Unit
 unV' = unV (H.liftAff <<< errorShow)
 
 type State =
