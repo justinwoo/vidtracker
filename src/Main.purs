@@ -24,7 +24,7 @@ import Hyper.Middleware (lift')
 import Hyper.Middleware.Class (getConn)
 import Hyper.Node.FileServer (fileServer)
 import Hyper.Node.Server (defaultOptions, runServer)
-import Hyper.Request (readBody)
+import Hyper.Request (getRequestData, readBody)
 import Hyper.Response (headers, respond, writeStatus)
 import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
 import Node.Buffer (BUFFER)
@@ -114,8 +114,9 @@ main = launchAff $
       writeStatus statusBadRequest
       :*> headers []
       :*> respond ("bad JSON: " <> show e)
-    handleConn conn@{components: Config {dir, db, openExe}} =
-      case Tuple conn.request.method conn.request.url of
+    handleConn conn@{components: Config {dir, db, openExe}} = do
+      request <- getRequestData
+      case Tuple request.method request.url of
         t
           | match t files -> handleFiles files
           | match t watched -> handleWatched watched
