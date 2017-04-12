@@ -2,9 +2,9 @@ module Types where
 
 import Prelude
 import Data.Foreign (Foreign, F)
-import Data.Foreign.Class (class AsForeign, class IsForeign)
-import Data.Foreign.Generic (defaultOptions, readGeneric, toForeignGeneric)
-import Data.Foreign.Generic.Classes (class GenericDecode, class GenericEncode)
+import Data.Foreign.Class (class Decode, class Encode)
+import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
+import Data.Foreign.Generic.Class (class GenericDecode, class GenericEncode)
 import Data.Foreign.Generic.Types (SumEncoding)
 import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype)
@@ -15,27 +15,27 @@ options :: { unwrapSingleConstructors :: Boolean
 }
 options = defaultOptions {unwrapSingleConstructors = true}
 
-readGeneric' :: forall a rep. (Generic a rep, GenericDecode rep) => Foreign -> F a
-readGeneric' = readGeneric options
+genericDecode' :: forall a rep. Generic a rep => GenericDecode rep => Foreign -> F a
+genericDecode' = genericDecode options
 
-toForeignGeneric' :: forall a rep. (Generic a rep, GenericEncode rep) => a -> Foreign
-toForeignGeneric' = toForeignGeneric options
+genericEncode' :: forall a rep. Generic a rep => GenericEncode rep => a -> Foreign
+genericEncode' = genericEncode options
 
 newtype Path = Path String
 derive instance eqPath :: Eq Path
 derive instance ordPath :: Ord Path
 derive instance ntPath :: Newtype Path _
-derive newtype instance isPath :: IsForeign Path
-derive newtype instance asPath :: AsForeign Path
+derive newtype instance isPath :: Decode Path
+derive newtype instance asPath :: Encode Path
 
 newtype OpenRequest = OpenRequest
   { path :: Path
   }
 derive instance grOR :: Generic OpenRequest _
-instance ifOR :: IsForeign OpenRequest where
-  read = readGeneric'
-instance afOR :: AsForeign OpenRequest where
-  write = toForeignGeneric'
+instance ifOR :: Decode OpenRequest where
+  decode = genericDecode'
+instance afOR :: Encode OpenRequest where
+  encode = genericEncode'
 
 newtype FileData = FileData
   { path :: Path
@@ -44,10 +44,10 @@ newtype FileData = FileData
 derive instance eqFD :: Eq FileData
 derive instance ordFD :: Ord FileData
 derive instance grFD :: Generic FileData _
-instance ifFD :: IsForeign FileData where
-  read = readGeneric'
-instance afFD :: AsForeign FileData where
-  write = toForeignGeneric'
+instance ifFD :: Decode FileData where
+  decode = genericDecode'
+instance afFD :: Encode FileData where
+  encode = genericEncode'
 
 newtype WatchedData = WatchedData
   { path :: Path
@@ -56,15 +56,15 @@ newtype WatchedData = WatchedData
 derive instance eqWD :: Eq WatchedData
 derive instance ordWD :: Ord WatchedData
 derive instance grWD :: Generic WatchedData _
-instance ifWD :: IsForeign WatchedData where
-  read = readGeneric'
-instance afWD :: AsForeign WatchedData where
-  write = toForeignGeneric'
+instance ifWD :: Decode WatchedData where
+  decode = genericDecode'
+instance afWD :: Encode WatchedData where
+  encode = genericEncode'
 
 newtype Success = Success
   { status :: String }
 derive instance grSC :: Generic Success _
-instance ifSC :: IsForeign Success where
-  read = readGeneric'
-instance afSC :: AsForeign Success where
-  write = toForeignGeneric'
+instance ifSC :: Decode Success where
+  decode = genericDecode'
+instance afSC :: Encode Success where
+  encode = genericEncode'

@@ -12,7 +12,8 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Except (runExcept)
 import Data.Array (filter, sortBy)
 import Data.Either (Either(..), either)
-import Data.Foreign.Class (class AsForeign, class IsForeign, readJSON, write)
+import Data.Foreign.Class (class Encode, class Decode, encode)
+import Data.Foreign.Generic (decodeJSON)
 import Data.HTTP.Method (CustomMethod, Method)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
@@ -78,11 +79,11 @@ type AppEffects eff =
 ensureDB :: forall eff. FilePath -> Aff (db :: DBEffects | eff) DBConnection
 ensureDB path = do
   db <- newDB path
-  queryDB db "CREATE TABLE IF NOT EXISTS watched (path varchar(20) primary key unique, created datetime);" []
+  _ <- queryDB db "CREATE TABLE IF NOT EXISTS watched (path varchar(20) primary key unique, created datetime);" []
   pure db
 
 main :: forall eff.
-  Eff (AppEffects (err :: EXCEPTION | eff))
+  Eff (AppEffects (exception :: EXCEPTION | eff))
     (Canceler (AppEffects eff))
 main = launchAff $
   (liftEff $ lookupEnv "FILETRACKER_DIR") >>=
@@ -108,8 +109,8 @@ main = launchAff $
       writeStatus statusOK
       :*> headers [Tuple "Content-Type" "application/json"]
       :*> respond json
-    respondJSON' :: forall req res. (AsForeign res) => Route req res -> res -> _
-    respondJSON' _ = respondJSON <<< unsafeStringify <<< write
+    respondJSON' :: forall req res. (Encode res) => Route req res -> res -> _
+    respondJSON' _ = respondJSON <<< unsafeStringify <<< encode
     respondBadRequest e =
       writeStatus statusBadRequest
       :*> headers []
@@ -130,13 +131,13 @@ main = launchAff $
             case m of
               Left m' -> m' == method && u == url
               _ -> false
-          withBody :: forall req res. IsForeign req => Route req res -> (req -> _) -> _
+          withBody :: forall req res. Decode req => Route req res -> (req -> _) -> _
           withBody _ handler = do
             body <- readBody
             either
               respondBadRequest
               handler
-              (runExcept $ readJSON body)
+              (runExcept $ decodeJSON body)
 
           handleFiles r = do
             files <- lift' $ readdir' dir
