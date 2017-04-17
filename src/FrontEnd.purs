@@ -19,10 +19,11 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import DOM (DOM)
-import Data.Array ((:))
+import Data.Array (reverse, sort, sortWith)
 import Data.Either (Either(Left), either)
 import Data.Foreign (ForeignError)
-import Data.Foreign.Class (class AsForeign, class IsForeign, readJSON, write)
+import Data.Foreign.Class (class Encode, class Decode, encode)
+import Data.Foreign.Generic (decodeJSON)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
 import Data.Monoid (mempty)
@@ -43,8 +44,8 @@ request :: forall req res m eff.
     | eff
     )
     m
-  => AsForeign req
-  => IsForeign res
+  => Encode req
+  => Decode res
   => Route req res -> Maybe req -> m (VE res)
 request (Route route) body =
   H.liftAff $ either invalid pure <$> parseResponse <$> action
@@ -52,10 +53,10 @@ request (Route route) body =
     action = AJ.affjax $ AJ.defaultRequest
       { method = Left route.method
       , url = route.url
-      , content = unsafeStringify <<< write <$> body
+      , content = unsafeStringify <<< encode <$> body
       }
     parseResponse response =
-      runExcept $ readJSON response.response
+      runExcept $ decodeJSON response.response
 
 unV' :: forall e a m.
   MonadAff
@@ -66,15 +67,23 @@ unV' :: forall e a m.
   => (a -> m Unit) -> VE a -> m Unit
 unV' = unV (H.liftAff <<< errorShow)
 
+data Dir = ASC | DSC
+derive instance eqDir :: Eq Dir
+data Col = Title | Status
+derive instance eqCol :: Eq Col
+data Sorting = Sorting Col Dir | NoSorting
+
 type State =
   { files :: Array Path
   , watched :: Array WatchedData
+  , sorting :: Sorting
   }
 
 data Query a
   = Init a
   | OpenFile Path a
   | SetWatched Path Boolean a
+  | ChangeSorting Col a
 
 type AppEffects eff =
   Aff
@@ -97,20 +106,51 @@ ui =
     initialState =
       { files: mempty
       , watched: mempty
+      , sorting: NoSorting
       }
 
     render :: State -> H.ComponentHTML Query
     render state =
       HH.div
         [ HP.class_ $ wrap "container" ]
-        $ HH.h1_ [ HH.text "Vidtracker" ]
-          : (file <$> state.files)
+        $ [ HH.h1_ [ HH.text "Vidtracker" ]
+          , HH.div
+            [ HP.class_ $ wrap "file"]
+            [ HH.h3
+              [ HP.class_ $ wrap "file-link"
+              , HE.onClick $ HE.input_ (ChangeSorting Title)
+              ] [ HH.text $ "Title" <> displayTicker Title ]
+            , HH.h3
+              [ HP.class_ $ wrap "file-button"
+              , HE.onClick $ HE.input_ (ChangeSorting Status)
+              ] [ HH.text $ "Status" <> displayTicker Status ]
+            , HH.h3 [HP.class_ $ wrap "file-note"] [ HH.text "Date" ]
+            ]
+          ] <> (file <$> applySort state.files)
       where
+        displayTicker col
+          | Sorting col' dir <- state.sorting
+          , asc <- dir == ASC
+          , col' == col = if asc
+            then " ㊤"
+            else " ㊦"
+          | otherwise = ""
+        applySort
+          | Sorting col dir <- state.sorting
+          , rev <- if dir == ASC then id else reverse
+          = rev <<< case col of
+              Title -> sort
+              Status -> sortWith findWatched
+          | otherwise = id
+        findWatched path = find (\(WatchedData fd) -> fd.path == path) state.watched
         file path =
           HH.div
             [ HP.class_ $ wrap "file"]
             [ HH.a
-              [ HP.class_ $ wrap "file-link"
+              [ HP.classes $ wrap <$>
+                [ "file-link"
+                , maybe "" (const "watched") watched
+                ]
               , HE.onClick $ HE.input_ (OpenFile path) ]
               [ HH.text $ unwrap path ]
             , HH.button
@@ -127,7 +167,7 @@ ui =
               [ HH.text $ maybe "" id watched ]
             ]
           where
-            watched = getDate <$> find (\(WatchedData fd) -> fd.path == path) state.watched
+            watched = getDate <$> findWatched path
             getDate (WatchedData {created}) = JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
 
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
@@ -142,7 +182,7 @@ ui =
           pure $ Tuple <$> files <*> watched
 
     eval (OpenFile path next) = do
-      request open $ Just (OpenRequest {path})
+      _ <- request open $ Just (OpenRequest {path})
       pure next
 
     eval (SetWatched path flag next) = do
@@ -150,11 +190,21 @@ ui =
         \w -> H.modify _ {watched = w}
       pure next
 
+    eval (ChangeSorting col next)= do
+      H.modify $ \s -> case s.sorting of
+        Sorting curr dir | curr == col ->
+          s {sorting = case dir of
+              ASC -> Sorting col DSC
+              DSC -> NoSorting
+            }
+        _ -> s {sorting = Sorting col ASC}
+      pure next
+
 main :: forall e.
   Eff
     ( avar :: AVAR
     , ref :: REF
-    , err :: EXCEPTION
+    , exception :: EXCEPTION
     , dom :: DOM
     , console :: CONSOLE
     , ajax :: AJAX

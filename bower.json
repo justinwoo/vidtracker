@@ -9,14 +9,15 @@
   "dependencies": {
     "purescript-prelude": "^3.0.0",
     "purescript-console": "^3.0.0",
-    "purescript-hyper": "git://github.com/justinwoo/hyper#15162f1404e",
+    "purescript-hyper": "^0.7.2",
     "purescript-node-process": "^4.0.0",
     "purescript-node-sqlite3": "^0.5.0",
-    "purescript-foreign-generic": "^4.0.0",
+    "purescript-foreign-generic": "^4.1.0",
     "purescript-foreign": "^4.0.0",
     "purescript-node-child-process": "^4.0.0",
     "purescript-affjax": "^4.0.0",
-    "purescript-validation": "^3.0.0"
-  },
-  "missing": ["halogen", "dom-classy"]
+    "purescript-validation": "^3.0.0",
+    "purescript-halogen": "^2.0.0",
+    "purescript-dom-classy": "^2.0.0"
+  }
 }
