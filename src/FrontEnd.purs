@@ -18,6 +18,7 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
+import Control.MonadPlus (guard)
 import DOM (DOM)
 import Data.Array (filter, reverse, sort, sortWith)
 import Data.Either (Either(Left), either)
@@ -119,20 +120,26 @@ ui =
       HH.div
         [ HP.class_ $ wrap "container" ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
-          , HH.div
+          , search
+          , header
+          ] <> files
+      where
+        search =
+          HH.div
             [ HP.class_ $ wrap "search" ]
             $ [ HH.h4_ [ HH.text "Search" ]
               , HH.input
                   [ HP.value state.search
                   , HE.onValueInput (HE.input Search)
                   ]
-              ] <> if state.search == ""
-                then mempty
-                else pure $
-                  HH.button
-                    [ HE.onClick $ HE.input_ ClearSearch ]
-                    [ HH.text "Clear" ]
-          , HH.div
+              ] <> clear
+        clear =
+          guard (state.search /= "") $>
+            HH.button
+              [ HE.onClick $ HE.input_ ClearSearch ]
+              [ HH.text "Clear" ]
+        header =
+          HH.div
             [ HP.class_ $ wrap "file"]
             [ HH.h3
               [ HP.class_ $ wrap "file-link"
@@ -144,8 +151,9 @@ ui =
               ] [ HH.text $ "Status" <> displayTicker Status ]
             , HH.h3 [HP.class_ $ wrap "file-note"] [ HH.text "Date" ]
             ]
-          ] <> (file <$> applyTransforms state.files)
-      where
+        files =
+          file <$> applyTransforms state.files
+
         displayTicker col
           | Sorting col' dir <- state.sorting
           , asc <- dir == ASC
@@ -159,7 +167,9 @@ ui =
             x -> filter $ \(Path path) -> contains (Pattern $ toLower x) (toLower path)
         applySorting
           | Sorting col dir <- state.sorting
-          , rev <- if dir == ASC then id else reverse
+          , rev <- if dir == ASC
+            then id
+            else reverse
           , sort' <- case col of
             Title -> sort
             Status -> sortWith findWatched
@@ -191,7 +201,9 @@ ui =
             ]
           where
             watched = getDate <$> findWatched path
-            getDate (WatchedData {created}) = JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
+            getDate (WatchedData {created}) =
+              -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
+              JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
 
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
