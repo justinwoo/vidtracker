@@ -19,7 +19,7 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import DOM (DOM)
-import Data.Array (reverse, sort, sortWith)
+import Data.Array (filter, reverse, sort, sortWith)
 import Data.Either (Either(Left), either)
 import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class Encode, class Decode, encode)
@@ -28,13 +28,14 @@ import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
+import Data.String (Pattern(..), contains, toLower)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import Global.Unsafe (unsafeStringify)
 import Network.HTTP.Affjax (AJAX)
 import Routes (Route(..), files, open, update, watched)
-import Types (FileData(..), OpenRequest(..), Path, WatchedData(..))
+import Types (FileData(..), OpenRequest(..), Path(..), WatchedData(..))
 
 type VE a = V (NonEmptyList ForeignError) a
 
@@ -77,6 +78,7 @@ type State =
   { files :: Array Path
   , watched :: Array WatchedData
   , sorting :: Sorting
+  , search :: String
   }
 
 data Query a
@@ -84,6 +86,8 @@ data Query a
   | OpenFile Path a
   | SetWatched Path Boolean a
   | ChangeSorting Col a
+  | Search String a
+  | ClearSearch a
 
 type AppEffects eff =
   Aff
@@ -107,6 +111,7 @@ ui =
       { files: mempty
       , watched: mempty
       , sorting: NoSorting
+      , search: mempty
       }
 
     render :: State -> H.ComponentHTML Query
@@ -114,6 +119,19 @@ ui =
       HH.div
         [ HP.class_ $ wrap "container" ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
+          , HH.div
+            [ HP.class_ $ wrap "search" ]
+            $ [ HH.h4_ [ HH.text "Search" ]
+              , HH.input
+                  [ HP.value state.search
+                  , HE.onValueInput (HE.input Search)
+                  ]
+              ] <> if state.search == ""
+                then mempty
+                else pure $
+                  HH.button
+                    [ HE.onClick $ HE.input_ ClearSearch ]
+                    [ HH.text "Clear" ]
           , HH.div
             [ HP.class_ $ wrap "file"]
             [ HH.h3
@@ -126,21 +144,26 @@ ui =
               ] [ HH.text $ "Status" <> displayTicker Status ]
             , HH.h3 [HP.class_ $ wrap "file-note"] [ HH.text "Date" ]
             ]
-          ] <> (file <$> applySort state.files)
+          ] <> (file <$> applyTransforms state.files)
       where
         displayTicker col
           | Sorting col' dir <- state.sorting
           , asc <- dir == ASC
           , col' == col = if asc
-            then " ㊤"
-            else " ㊦"
+            then " ASC"
+            else " DSC"
           | otherwise = ""
-        applySort
+        applyTransforms = applySorting <<< applyFiltering
+        applyFiltering = case state.search of
+            "" -> id
+            x -> filter $ \(Path path) -> contains (Pattern $ toLower x) (toLower path)
+        applySorting
           | Sorting col dir <- state.sorting
           , rev <- if dir == ASC then id else reverse
-          = rev <<< case col of
-              Title -> sort
-              Status -> sortWith findWatched
+          , sort' <- case col of
+            Title -> sort
+            Status -> sortWith findWatched
+          = rev <<< sort'
           | otherwise = id
         findWatched path = find (\(WatchedData fd) -> fd.path == path) state.watched
         file path =
@@ -188,6 +211,14 @@ ui =
     eval (SetWatched path flag next) = do
       request update (Just $ FileData {path, watched: flag}) >>= unV'
         \w -> H.modify _ {watched = w}
+      pure next
+
+    eval (Search str next) = do
+      H.modify _ {search = str}
+      pure next
+
+    eval (ClearSearch next) = do
+      H.modify _ {search = ""}
       pure next
 
     eval (ChangeSorting col next)= do
