@@ -14,21 +14,26 @@ import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Console (CONSOLE, errorShow, log)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (error)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
 import DOM (DOM)
-import Data.Array (filter, reverse, sort, sortWith)
+import Data.Array (filter, group', intercalate, length, reverse, sort, sortWith)
 import Data.Either (Either(Left), either)
-import Data.Foreign (ForeignError)
+import Data.Foreign (Foreign, ForeignError)
 import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
+import Data.Int (ceil)
+import Data.JSDate (getDate, getFullYear, getMonth)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
+import Data.NonEmpty (NonEmpty, head, oneOf)
+import Data.Number.Format (toString)
 import Data.String (Pattern(..), contains, toLower)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
@@ -75,11 +80,21 @@ data Col = Title | Status
 derive instance eqCol :: Eq Col
 data Sorting = Sorting Col Dir | NoSorting
 
+foreign import data Chart :: Type
+foreign import initChart :: forall e. Foreign -> Eff (dom :: DOM | e) Chart
+foreign import updateChart :: forall e. ChartSeries -> Chart -> Eff (dom :: DOM | e) Unit
+newtype ChartSeries = ChartSeries (Array ChartSeriesData)
+newtype ChartSeriesData = ChartSeriesData
+  { date :: String
+  , value :: Int
+  }
+
 type State =
   { files :: Array Path
   , watched :: Array WatchedData
   , sorting :: Sorting
   , search :: String
+  , chart :: Maybe Chart
   }
 
 data Query a
@@ -94,6 +109,7 @@ type AppEffects eff =
   Aff
   ( ajax :: AJAX
   , console :: CONSOLE
+  , dom :: DOM
   | eff )
 
 ui :: forall eff. H.Component HH.HTML Query Unit Void (AppEffects eff)
@@ -113,6 +129,7 @@ ui =
       , watched: mempty
       , sorting: NoSorting
       , search: mempty
+      , chart: Nothing
       }
 
     render :: State -> H.ComponentHTML Query
@@ -120,10 +137,16 @@ ui =
       HH.div
         [ HP.class_ $ wrap "container" ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
+          , heatmap
           , search
           , header
           ] <> files
       where
+        heatmap =
+          HH.div
+            [ HP.ref $ wrap "heatmap"
+            , HP.class_ $ wrap "heatmap"]
+            []
         search =
           HH.div
             [ HP.class_ $ wrap "search" ]
@@ -205,10 +228,40 @@ ui =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
 
+    error' = H.liftEff <<< error
+
+    updateChart' :: Array WatchedData -> _
+    updateChart' w = do
+      chart <- H.gets _.chart
+      case chart of
+        Just ch -> do
+          H.liftEff $ updateChart series ch
+        Nothing -> error' "wtf no chart???"
+      where
+        series = ChartSeries $ makeData <$> group' (extractMonth <$> w)
+        makeData :: NonEmpty Array String -> ChartSeriesData
+        makeData xs = ChartSeriesData { date: head xs, value: length $ oneOf xs }
+        extractMonth :: WatchedData -> String
+        extractMonth (WatchedData {created}) =
+           unsafePerformEff <<< (prepareDateString <=< JSDate.parse) $ created
+        prepareDateString jsdate = do
+          year <- toString <$> JSDate.getFullYear jsdate
+          month <- show <$> (+) 1 <<< ceil <$> JSDate.getMonth jsdate
+          date <- toString <$> JSDate.getDate jsdate
+          pure $ intercalate "-" [year, month, date]
+
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
+      heatmap <- H.getRef (wrap "heatmap")
+      case heatmap of
+        (Just el) -> do
+          chart <- H.liftEff $ initChart el
+          H.modify _ {chart = Just chart}
+        _ -> error' "can't find heatmap element?"
       getResult >>= unV'
-        \(Tuple f w) -> H.modify _ {files = f, watched = w}
+        \(Tuple f w) -> do
+          H.modify _ {files = f, watched = w}
+          updateChart' w
       pure next
       where
         getResult = do
@@ -222,7 +275,9 @@ ui =
 
     eval (SetWatched path flag next) = do
       request update (Just $ FileData {path, watched: flag}) >>= unV'
-        \w -> H.modify _ {watched = w}
+        \w -> do
+          H.modify _ {watched = w}
+          updateChart' w
       pure next
 
     eval (Search str next) = do

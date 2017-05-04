@@ -18,6 +18,7 @@
     "purescript-affjax": "^4.0.0",
     "purescript-validation": "^3.0.0",
     "purescript-halogen": "^2.0.0",
-    "purescript-dom-classy": "^2.0.0"
+    "purescript-dom-classy": "^2.0.0",
+    "purescript-numbers": "^5.0.0"
   }
 }
