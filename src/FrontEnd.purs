@@ -2,6 +2,11 @@ module FrontEnd where
 
 import Prelude
 import Data.JSDate as JSDate
+import ECharts.Chart as EC
+import ECharts.Commands as E
+import ECharts.Monad as EM
+import ECharts.Types as ET
+import ECharts.Types.Phantom as ETP
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
@@ -16,18 +21,22 @@ import Control.Monad.Aff.Console (CONSOLE, errorShow, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (error)
 import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
 import DOM (DOM)
+import DOM.HTML.Types (readHTMLElement)
 import Data.Array (filter, group', intercalate, length, reverse, sort, sortWith)
-import Data.Either (Either(Left), either)
-import Data.Foreign (Foreign, ForeignError)
+import Data.Date (Date)
+import Data.DateTime (adjust, date)
+import Data.DateTime.Instant (toDateTime)
+import Data.Either (Either(..), either)
+import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
-import Data.Int (ceil)
-import Data.JSDate (getDate, getFullYear, getMonth)
+import Data.Int (ceil, toNumber)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
 import Data.Monoid (mempty)
@@ -35,7 +44,8 @@ import Data.Newtype (unwrap, wrap)
 import Data.NonEmpty (NonEmpty, head, oneOf)
 import Data.Number.Format (toString)
 import Data.String (Pattern(..), contains, toLower)
-import Data.Traversable (find)
+import Data.Time.Duration (Days(..))
+import Data.Traversable (find, traverse_)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import Global.Unsafe (unsafeStringify)
@@ -80,9 +90,6 @@ data Col = Title | Status
 derive instance eqCol :: Eq Col
 data Sorting = Sorting Col Dir | NoSorting
 
-foreign import data Chart :: Type
-foreign import initChart :: forall e. Foreign -> Eff (dom :: DOM | e) Chart
-foreign import updateChart :: forall e. ChartSeries -> Chart -> Eff (dom :: DOM | e) Unit
 newtype ChartSeries = ChartSeries (Array ChartSeriesData)
 newtype ChartSeriesData = ChartSeriesData
   { date :: String
@@ -94,7 +101,7 @@ type State =
   , watched :: Array WatchedData
   , sorting :: Sorting
   , search :: String
-  , chart :: Maybe Chart
+  , chart :: Maybe ET.Chart
   }
 
 data Query a
@@ -110,6 +117,9 @@ type AppEffects eff =
   ( ajax :: AJAX
   , console :: CONSOLE
   , dom :: DOM
+  , echarts :: ET.ECHARTS
+  , exception :: EXCEPTION
+  , now :: NOW
   | eff )
 
 ui :: forall eff. H.Component HH.HTML Query Unit Void (AppEffects eff)
@@ -230,12 +240,14 @@ ui =
 
     error' = H.liftEff <<< error
 
-    updateChart' :: Array WatchedData -> _
     updateChart' w = do
       chart <- H.gets _.chart
       case chart of
         Just ch -> do
-          H.liftEff $ updateChart series ch
+          now <- toDateTime <$> H.liftEff now
+          case date <$> adjust (Days (-90.0)) now of
+            Just back -> H.liftEff $ EC.setOption (options back (date now) series) ch
+            Nothing -> error' "oops, we messed up dates"
         Nothing -> error' "wtf no chart???"
       where
         series = ChartSeries $ makeData <$> group' (extractMonth <$> w)
@@ -253,9 +265,9 @@ ui =
     eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
     eval (Init next) = do
       heatmap <- H.getRef (wrap "heatmap")
-      case heatmap of
-        (Just el) -> do
-          chart <- H.liftEff $ initChart el
+      case runExcept <<< readHTMLElement <$> heatmap of
+        Just (Right el) -> do
+          chart <- H.liftEff $ EC.init el
           H.modify _ {chart = Just chart}
         _ -> error' "can't find heatmap element?"
       getResult >>= unV'
@@ -306,6 +318,8 @@ main :: forall e.
     , dom :: DOM
     , console :: CONSOLE
     , ajax :: AJAX
+    , now :: NOW
+    , echarts :: ET.ECHARTS
     | e
     )
     Unit
@@ -315,3 +329,33 @@ main = HA.runHalogenAff do
 
   log "Running"
 
+options :: Date -> Date -> ChartSeries -> EM.DSL ETP.OptionI
+options a b (ChartSeries xs) = do
+  E.tooltip do
+    E.positionTop
+  E.visualMap $ E.continuous do
+    E.min 0.0
+    E.max 10.0
+    E.calculable true
+    E.orient ET.Horizontal
+    E.leftCenter
+    E.topTop
+  E.calendar do
+    E.calendarSpec do
+      E.buildRange do
+        E.addDateValue $ a
+        E.addDateValue $ b
+      E.buildCellSize do
+        E.autoValue
+        E.autoValue
+  E.series do
+    E.heatMap do
+      E.calendarCoordinateSystem
+      E.calendarIndex 0
+      E.buildItems
+        $ traverse_ E.addItem (pair <$> xs)
+  where
+    pair (ChartSeriesData {date, value}) = do
+      E.buildValues do
+        E.addStringValue date
+        E.addValue $ toNumber value

@@ -19,6 +19,8 @@
     "purescript-validation": "^3.0.0",
     "purescript-halogen": "^2.0.0",
     "purescript-dom-classy": "^2.0.0",
-    "purescript-numbers": "^5.0.0"
+    "purescript-numbers": "^5.0.0",
+    "purescript-echarts": "^4.1.0",
+    "purescript-now": "^3.0.0"
   }
 }
