@@ -43,7 +43,7 @@ import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.NonEmpty (NonEmpty, head, oneOf)
 import Data.Number.Format (toString)
-import Data.String (Pattern(..), contains, toLower)
+import Data.String (Pattern(..), contains, split, toLower)
 import Data.Time.Duration (Days(..))
 import Data.Traversable (find, traverse_)
 import Data.Tuple (Tuple(..))
@@ -108,6 +108,7 @@ data Query a
   = Init a
   | OpenFile Path a
   | SetWatched Path Boolean a
+  | Filter Path a
   | ChangeSorting Col a
   | Search String a
   | ClearSearch a
@@ -183,6 +184,9 @@ ui =
               , HE.onClick $ HE.input_ (ChangeSorting Status)
               ] [ HH.text $ "Status" <> displayTicker Status ]
             , HH.h3 [HP.class_ $ wrap "file-note"] [ HH.text "Date" ]
+            , HH.h3
+              [ HP.class_ $ wrap "filter-link"
+              ] [ HH.text "" ]
             ]
         files =
           file <$> applyTransforms state.files
@@ -231,6 +235,11 @@ ui =
             , HH.span
               [ HP.class_ $ wrap "file-note" ]
               [ HH.text $ maybe "" id watched ]
+            , HH.a
+              [ HP.class_ $ wrap "filter-link"
+              , HE.onClick $ HE.input_ (Filter path)
+              ]
+              [ HH.text "set filter" ]
             ]
           where
             watched = getDate <$> findWatched path
@@ -291,6 +300,16 @@ ui =
           H.modify _ {watched = w}
           updateChart' w
       pure next
+
+    eval (Filter path next) = do
+      case extract path of
+        Left e -> error' e *> pure next
+        Right s -> eval $ Search s next
+      where
+        extract (Path s)
+          | [_, a] <- split (Pattern "] ") s
+          , [b, _] <- split (Pattern " -") a = Right b
+          | otherwise = Left "didn't match expected patterns"
 
     eval (Search str next) = do
       H.modify _ {search = str}
