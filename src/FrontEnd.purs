@@ -38,7 +38,7 @@ import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
 import Data.Int (ceil, toNumber)
 import Data.List.NonEmpty (NonEmptyList)
-import Data.Maybe (Maybe(Nothing, Just), isJust, maybe)
+import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.NonEmpty (NonEmpty, head, oneOf)
@@ -99,6 +99,7 @@ newtype ChartSeriesData = ChartSeriesData
 type State =
   { files :: Array Path
   , watched :: Array WatchedData
+  , filterWatched :: Boolean
   , sorting :: Sorting
   , search :: String
   , chart :: Maybe ET.Chart
@@ -112,6 +113,7 @@ data Query a
   | ChangeSorting Col a
   | Search String a
   | ClearSearch a
+  | ToggleFilterWatched Boolean a
 
 type AppEffects eff =
   Aff
@@ -138,6 +140,7 @@ ui =
     initialState =
       { files: mempty
       , watched: mempty
+      , filterWatched: false
       , sorting: NoSorting
       , search: mempty
       , chart: Nothing
@@ -149,6 +152,7 @@ ui =
         [ HP.class_ $ wrap "container" ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
           , heatmap
+          , filterCheckbox
           , search
           , header
           ] <> files
@@ -158,6 +162,17 @@ ui =
             [ HP.ref $ wrap "heatmap"
             , HP.class_ $ wrap "heatmap"]
             []
+        filterCheckbox =
+          HH.div
+            [ HP.class_ $ wrap "filter-watched" ]
+            [ HH.h4_ [ HH.text "Filter Watched" ]
+            , HH.input
+              [ HP.class_ $ wrap "checkbox"
+              , HP.type_ HP.InputCheckbox
+              , HP.checked state.filterWatched
+              , HE.onChecked (HE.input ToggleFilterWatched)
+              ]
+            ]
         search =
           HH.div
             [ HP.class_ $ wrap "search" ]
@@ -198,8 +213,11 @@ ui =
             then " ASC"
             else " DSC"
           | otherwise = ""
-        applyTransforms = applySorting <<< applyFiltering
-        applyFiltering = case state.search of
+        applyTransforms = applySorting <<< applySearchFiltering <<< applyWatchFiltering
+        applyWatchFiltering = if state.filterWatched
+          then filter $ isNothing <<< findWatched
+          else id
+        applySearchFiltering = case state.search of
             "" -> id
             x -> filter $ \(Path path) -> contains (Pattern $ toLower x) (toLower path)
         applySorting
@@ -327,6 +345,10 @@ ui =
               DSC -> NoSorting
             }
         _ -> s {sorting = Sorting col ASC}
+      pure next
+
+    eval (ToggleFilterWatched flag next) = do
+      H.modify _ {filterWatched = flag}
       pure next
 
 main :: forall e.
