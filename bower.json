@@ -16,7 +16,7 @@
     "purescript-foreign": "^4.0.0",
     "purescript-node-child-process": "^4.0.0",
     "purescript-affjax": "^4.0.0",
-    "purescript-validation": "^3.0.0",
+    "purescript-validation": "^3.1.0",
     "purescript-halogen": "^2.0.1",
     "purescript-dom-classy": "^2.1.0",
     "purescript-numbers": "^5.0.0",

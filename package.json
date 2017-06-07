@@ -8,13 +8,20 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "pulp browserify -m FrontEnd --to ./dist/index.js",
-    "watch": "pulp -w browserify -m FrontEnd --to ./dist/index.js"
+    "build:be": "pulp build --to index.js",
+    "build:fe": "pulp build && webpack",
+    "watch:build": "pulp -w build",
+    "watch:fe": "webpack -w",
+    "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\""
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "echarts": "^3.6.1",
     "sqlite3": "^3.1.8"
+  },
+  "devDependencies": {
+    "concurrently": "^3.4.0",
+    "webpack": "^3.0.0-rc.1"
   }
 }
