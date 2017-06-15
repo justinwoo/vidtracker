@@ -254,8 +254,11 @@ ui =
             , HH.span
               [ HP.class_ $ wrap "file-note" ]
               [ HH.text $ maybe "" id watched ]
-            , HH.a
-              [ HP.class_ $ wrap "filter-link"
+            , HH.button
+              [ HP.classes $ wrap <$>
+                [ "filter-link"
+                , "pure-button"
+                ]
               , HE.onClick $ HE.input_ (Filter path)
               ]
               [ HH.text "set filter" ]
