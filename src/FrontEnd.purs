@@ -163,17 +163,14 @@ ui =
             , HP.class_ $ wrap "heatmap"]
             []
         filterCheckbox =
-          HH.div
-            [ HP.class_ $ wrap "filter-watched"
-            , HE.onClick (HE.input_ $ ToggleFilterWatched (not state.filterWatched))
+          HH.button
+            [ HP.classes $ wrap <$>
+              [ "filter-watched"
+              , "pure-button"
+              ] <> (guard state.filterWatched $> "pure-button-primary")
+            , HE.onClick <<< HE.input_ <<< ToggleFilterWatched <<< not $ state.filterWatched
             ]
-            [ HH.h4_ [ HH.a_ [ HH.text "Filter Watched" ] ]
-            , HH.input
-              [ HP.class_ $ wrap "checkbox"
-              , HP.type_ HP.InputCheckbox
-              , HP.checked state.filterWatched
-              ]
-            ]
+            [ HH.text "Filter Watched" ]
         search =
           HH.div
             [ HP.class_ $ wrap "search" ]
