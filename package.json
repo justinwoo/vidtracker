@@ -9,7 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:be": "pulp build --to index.js",
-    "build:fe": "pulp build && webpack",
+    "build:fe": "pulp browserify -m FrontEnd --to dist/index.js",
     "watch:build": "pulp -w build",
     "watch:fe": "webpack -w",
     "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\""
@@ -17,7 +17,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "echarts": "^3.6.1",
+    "echarts": "^3.6.2",
     "sqlite3": "^3.1.8"
   },
   "devDependencies": {

@@ -164,13 +164,14 @@ ui =
             []
         filterCheckbox =
           HH.div
-            [ HP.class_ $ wrap "filter-watched" ]
-            [ HH.h4_ [ HH.text "Filter Watched" ]
+            [ HP.class_ $ wrap "filter-watched"
+            , HE.onClick (HE.input_ $ ToggleFilterWatched (not state.filterWatched))
+            ]
+            [ HH.h4_ [ HH.a_ [ HH.text "Filter Watched" ] ]
             , HH.input
               [ HP.class_ $ wrap "checkbox"
               , HP.type_ HP.InputCheckbox
               , HP.checked state.filterWatched
-              , HE.onChecked (HE.input ToggleFilterWatched)
               ]
             ]
         search =
