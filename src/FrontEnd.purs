@@ -107,6 +107,7 @@ type State =
 
 data Query a
   = Init a
+  | FetchData a
   | OpenFile Path a
   | SetWatched Path Boolean a
   | Filter Path a
@@ -152,6 +153,7 @@ ui =
         [ HP.class_ $ wrap "container" ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
           , heatmap
+          , refreshButton
           , filterCheckbox
           , search
           , header
@@ -162,6 +164,15 @@ ui =
             [ HP.ref $ wrap "heatmap"
             , HP.class_ $ wrap "heatmap"]
             []
+        refreshButton =
+          HH.button
+            [ HP.classes $ wrap <$>
+              [ "refresh-files"
+              , "pure-button"
+              ]
+            , HE.onClick <<< HE.input_ $ FetchData
+            ]
+            [ HH.text "Refresh" ]
         filterCheckbox =
           HH.button
             [ HP.classes $ wrap <$>
@@ -298,6 +309,9 @@ ui =
           chart <- H.liftEff $ EC.init el
           H.modify _ {chart = Just chart}
         _ -> error' "can't find heatmap element?"
+      eval (FetchData next)
+
+    eval (FetchData next) = do
       getResult >>= unV'
         \(Tuple f w) -> do
           H.modify _ {files = f, watched = w}
