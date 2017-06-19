@@ -22,6 +22,6 @@
   },
   "devDependencies": {
     "concurrently": "^3.4.0",
-    "webpack": "^3.0.0-rc.1"
+    "webpack": "^3.0.0"
   }
 }

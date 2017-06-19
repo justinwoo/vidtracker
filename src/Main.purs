@@ -1,6 +1,7 @@
 module Main where
 
 import Prelude
+
 import Control.IxMonad (ibind, (:*>), (:>>=))
 import Control.Monad.Aff (Aff, Canceler, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
@@ -17,7 +18,7 @@ import Data.Foreign.Generic (decodeJSON)
 import Data.HTTP.Method (CustomMethod, Method)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
-import Data.String (Pattern(..), contains)
+import Data.String (Pattern(..), contains, length)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Global.Unsafe (unsafeStringify)
@@ -28,9 +29,9 @@ import Hyper.Node.Server (defaultOptions, runServer)
 import Hyper.Request (getRequestData, readBody)
 import Hyper.Response (headers, respond, writeStatus)
 import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
-import Node.Buffer (BUFFER)
+import Node.Buffer (BUFFER, Buffer, create, writeString)
 import Node.ChildProcess (CHILD_PROCESS, defaultSpawnOptions, spawn)
-import Node.Encoding (Encoding(UTF8))
+import Node.Encoding (Encoding(..))
 import Node.FS (FS)
 import Node.FS.Aff (readdir, stat)
 import Node.FS.Stats (modifiedTime)
@@ -58,6 +59,19 @@ readdir' path = do
       s <- stat $ concat [path, file]
       pure (Tuple file s)
     sortByDate = sortBy <<< flip $ comparing (modifiedTime <<< snd)
+
+getBuffer :: forall e.
+  Int
+  -> String
+  -> Eff
+    ( buffer :: BUFFER
+    | e
+    )
+    Buffer
+getBuffer size json = do
+  buffer <- create size
+  _ <- writeString UTF8 0 size json buffer
+  pure buffer
 
 newtype Config = Config
   { db :: DBConnection
@@ -108,7 +122,15 @@ main = launchAff $
     respondJSON json =
       writeStatus statusOK
       :*> headers [Tuple "Content-Type" "application/json"]
-      :*> respond json
+      :*> respond' json
+    respond' json
+      | size <- length json
+      , size > 16000 = do
+        buffer <- liftEff $ getBuffer size json
+        respond buffer
+        where
+          bind = ibind
+    respond' json = respond json
     respondJSON' :: forall req res. (Encode res) => Route req res -> res -> _
     respondJSON' _ = respondJSON <<< unsafeStringify <<< encode
     respondBadRequest e =
