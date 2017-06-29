@@ -5,9 +5,8 @@ import Data.HTTP.Method (Method(..))
 import Data.Newtype (class Newtype)
 import Types (FileData, OpenRequest, Path, Success, WatchedData)
 
-newtype Route req res = Route
+newtype Route req res (url :: Symbol) = Route
   { method :: Method
-  , url :: String
   }
 
 newtype Unused = Unused String
@@ -15,14 +14,14 @@ derive instance ntU :: Newtype Unused _
 derive newtype instance isUU :: Decode Unused
 derive newtype instance asUU :: Encode Unused
 
-files :: Route Unused (Array Path)
-files = Route {method: GET, url: "/api/files"}
+files :: Route Unused (Array Path) "/api/files"
+files = Route {method: GET}
 
-watched :: Route Unused (Array WatchedData)
-watched = Route {method: GET, url: "/api/watched"}
+watched :: Route Unused (Array WatchedData) "/api/watched"
+watched = Route {method: GET}
 
-open :: Route OpenRequest Success
-open = Route {method: POST, url: "/api/open"}
+open :: Route OpenRequest Success "/api/open"
+open = Route {method: POST}
 
-update :: Route FileData (Array WatchedData)
-update = Route {method: POST, url: "/api/update"}
+update :: Route FileData (Array WatchedData) "/api/update"
+update = Route {method: POST}

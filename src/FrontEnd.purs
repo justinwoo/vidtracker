@@ -1,19 +1,7 @@
 module FrontEnd where
 
 import Prelude
-import Data.JSDate as JSDate
-import ECharts.Chart as EC
-import ECharts.Commands as E
-import ECharts.Monad as EM
-import ECharts.Types as ET
-import ECharts.Types.Phantom as ETP
-import Halogen as H
-import Halogen.Aff as HA
-import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
-import Halogen.VDom.Driver as D
-import Network.HTTP.Affjax as AJ
+
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
@@ -37,6 +25,7 @@ import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
 import Data.Int (ceil, toNumber)
+import Data.JSDate as JSDate
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
@@ -44,18 +33,31 @@ import Data.Newtype (unwrap, wrap)
 import Data.NonEmpty (NonEmpty, head, oneOf)
 import Data.Number.Format (toString)
 import Data.String (Pattern(..), contains, split, toLower)
+import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Time.Duration (Days(..))
 import Data.Traversable (find, traverse_)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
+import ECharts.Chart as EC
+import ECharts.Commands as E
+import ECharts.Monad as EM
+import ECharts.Types as ET
+import ECharts.Types.Phantom as ETP
 import Global.Unsafe (unsafeStringify)
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
+import Network.HTTP.Affjax as AJ
 import Routes (Route(..), files, open, update, watched)
 import Types (FileData(..), OpenRequest(..), Path(..), WatchedData(..))
 
 type VE a = V (NonEmptyList ForeignError) a
 
-request :: forall req res m eff.
+request :: forall req res url m eff.
   MonadAff
     ( ajax :: AJAX
     | eff
@@ -63,13 +65,14 @@ request :: forall req res m eff.
     m
   => Encode req
   => Decode res
-  => Route req res -> Maybe req -> m (VE res)
+  => IsSymbol url
+  => Route req res url -> Maybe req -> m (VE res)
 request (Route route) body =
   H.liftAff $ either invalid pure <$> parseResponse <$> action
   where
     action = AJ.affjax $ AJ.defaultRequest
       { method = Left route.method
-      , url = route.url
+      , url = reflectSymbol (SProxy :: SProxy url)
       , content = unsafeStringify <<< encode <$> body
       }
     parseResponse response =

@@ -19,6 +19,7 @@ import Data.HTTP.Method (CustomMethod, Method)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
 import Data.String (Pattern(..), contains, length)
+import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Global.Unsafe (unsafeStringify)
@@ -131,7 +132,12 @@ main = launchAff $
         where
           bind = ibind
     respond' json = respond json
-    respondJSON' :: forall req res. (Encode res) => Route req res -> res -> _
+    respondJSON' :: forall req res url
+      . IsSymbol url
+      => Encode res
+      => Route req res url
+      -> res
+      -> _
     respondJSON' _ = respondJSON <<< unsafeStringify <<< encode
     respondBadRequest e =
       writeStatus statusBadRequest
@@ -148,12 +154,22 @@ main = launchAff $
           | otherwise -> fileServer "dist" notFound
         where
           bind = ibind
-          match :: forall req res. Tuple (Either Method CustomMethod) String -> Route req res -> Boolean
-          match (Tuple m u) (Route {method, url}) =
+          match :: forall req res url
+            . IsSymbol url
+            => Tuple (Either Method CustomMethod) String
+            -> Route req res url
+            -> Boolean
+          match (Tuple m u) (Route {method}) =
             case m of
               Left m' -> m' == method && u == url
               _ -> false
-          withBody :: forall req res. Decode req => Route req res -> (req -> _) -> _
+            where
+              url = reflectSymbol (SProxy :: SProxy url)
+          withBody :: forall req res url
+            . Decode req
+            => Route req res url
+            -> (req -> _)
+            -> _
           withBody _ handler = do
             body <- readBody
             either
