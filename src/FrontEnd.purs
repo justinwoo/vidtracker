@@ -287,7 +287,7 @@ ui =
       case chart of
         Just ch -> do
           now <- toDateTime <$> H.liftEff now
-          case date <$> adjust (Days (-90.0)) now of
+          case date <$> adjust (Days (-120.0)) now of
             Just back -> H.liftEff $ EC.setOption (options back (date now) series) ch
             Nothing -> error' "oops, we messed up dates"
         Nothing -> error' "wtf no chart???"
