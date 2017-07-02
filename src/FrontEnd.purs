@@ -12,7 +12,10 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except (runExcept)
+import Control.Monad.Except.Trans (runExceptT)
+import Control.Monad.Trans.Class (lift)
 import Control.MonadPlus (guard)
 import DOM (DOM)
 import DOM.HTML.Types (readHTMLElement)
@@ -283,15 +286,16 @@ ui =
     error' = H.liftEff <<< error
 
     updateChart' w = do
-      chart <- H.gets _.chart
-      case chart of
-        Just ch -> do
-          now <- toDateTime <$> H.liftEff now
-          case date <$> adjust (Days (-120.0)) now of
-            Just back -> H.liftEff $ EC.setOption (options back (date now) series) ch
-            Nothing -> error' "oops, we messed up dates"
-        Nothing -> error' "wtf no chart???"
+      result <- runExceptT do
+        chart <- note "couldn't find existing chart instance" =<< lift (H.gets _.chart)
+        now <- lift $ toDateTime <$> now'
+        back <- note "somehow calculating time is too hard" $ date <$> adjust (Days (-120.0)) now
+        H.liftEff $ EC.setOption (options back (date now) series) chart
+      either error' pure result
       where
+        note :: forall m e. MonadThrow e m => e -> Maybe ~> m
+        note s = maybe (throwError s) pure
+        now' = H.liftEff now
         series = ChartSeries $ makeData <$> group' (extractMonth <$> w)
         makeData :: NonEmpty Array String -> ChartSeriesData
         makeData xs = ChartSeriesData { date: head xs, value: length $ oneOf xs }
