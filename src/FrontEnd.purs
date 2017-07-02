@@ -9,43 +9,29 @@ import Control.Monad.Aff.Console (CONSOLE, errorShow, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (error)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Now (NOW, now)
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
-import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except (runExcept)
-import Control.Monad.Except.Trans (runExceptT)
-import Control.Monad.Trans.Class (lift)
 import Control.MonadPlus (guard)
 import DOM (DOM)
-import DOM.HTML.Types (readHTMLElement)
-import Data.Array (filter, group', intercalate, length, reverse, sort, sortWith)
-import Data.Date (Date)
-import Data.DateTime (adjust, date)
-import Data.DateTime.Instant (toDateTime)
+import Data.Array (filter, reverse, sort, sortWith)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
-import Data.Int (ceil, toNumber)
 import Data.JSDate as JSDate
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
-import Data.NonEmpty (NonEmpty, head, oneOf)
-import Data.Number.Format (toString)
 import Data.String (Pattern(..), contains, split, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
-import Data.Time.Duration (Days(..))
-import Data.Traversable (find, traverse_)
+import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
-import ECharts.Chart as EC
-import ECharts.Commands as E
-import ECharts.Monad as EM
 import ECharts.Types as ET
-import ECharts.Types.Phantom as ETP
+import FrontEnd.Chart as Chart
 import Global.Unsafe (unsafeStringify)
 import Halogen as H
 import Halogen.Aff as HA
@@ -108,7 +94,6 @@ type State =
   , filterWatched :: Boolean
   , sorting :: Sorting
   , search :: String
-  , chart :: Maybe ET.Chart
   }
 
 data Query a
@@ -132,9 +117,13 @@ type AppEffects eff =
   , now :: NOW
   | eff )
 
+data Slot = ChartSlot
+derive instance eqSlot :: Eq Slot
+derive instance ordSlot :: Ord Slot
+
 ui :: forall eff. H.Component HH.HTML Query Unit Void (AppEffects eff)
 ui =
-  H.lifecycleComponent
+  H.lifecycleParentComponent
     { initialState: const initialState
     , render
     , eval
@@ -150,10 +139,9 @@ ui =
       , filterWatched: false
       , sorting: NoSorting
       , search: mempty
-      , chart: Nothing
       }
 
-    render :: State -> H.ComponentHTML Query
+    render :: State -> H.ParentHTML Query Chart.Query Slot (AppEffects eff)
     render state =
       HH.div
         [ HP.class_ $ wrap "container" ]
@@ -166,10 +154,7 @@ ui =
           ] <> files
       where
         heatmap =
-          HH.div
-            [ HP.ref $ wrap "heatmap"
-            , HP.class_ $ wrap "heatmap"]
-            []
+          HH.slot ChartSlot Chart.component state.watched absurd
         refreshButton =
           HH.button
             [ HP.classes $ wrap <$>
@@ -285,44 +270,14 @@ ui =
 
     error' = H.liftEff <<< error
 
-    updateChart' w = do
-      result <- runExceptT do
-        chart <- note "couldn't find existing chart instance" =<< lift (H.gets _.chart)
-        now <- lift $ toDateTime <$> now'
-        back <- note "somehow calculating time is too hard" $ date <$> adjust (Days (-120.0)) now
-        H.liftEff $ EC.setOption (options back (date now) series) chart
-      either error' pure result
-      where
-        note :: forall m e. MonadThrow e m => e -> Maybe ~> m
-        note s = maybe (throwError s) pure
-        now' = H.liftEff now
-        series = ChartSeries $ makeData <$> group' (extractMonth <$> w)
-        makeData :: NonEmpty Array String -> ChartSeriesData
-        makeData xs = ChartSeriesData { date: head xs, value: length $ oneOf xs }
-        extractMonth :: WatchedData -> String
-        extractMonth (WatchedData {created}) =
-           unsafePerformEff <<< (prepareDateString <=< JSDate.parse) $ created
-        prepareDateString jsdate = do
-          year <- toString <$> JSDate.getFullYear jsdate
-          month <- show <$> (+) 1 <<< ceil <$> JSDate.getMonth jsdate
-          date <- toString <$> JSDate.getDate jsdate
-          pure $ intercalate "-" [year, month, date]
-
-    eval :: Query ~> H.ComponentDSL State Query Void (AppEffects eff)
+    eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void (AppEffects eff)
     eval (Init next) = do
-      heatmap <- H.getRef (wrap "heatmap")
-      case runExcept <<< readHTMLElement <$> heatmap of
-        Just (Right el) -> do
-          chart <- H.liftEff $ EC.init el
-          H.modify _ {chart = Just chart}
-        _ -> error' "can't find heatmap element?"
       eval (FetchData next)
 
     eval (FetchData next) = do
       getResult >>= unV'
         \(Tuple f w) -> do
           H.modify _ {files = f, watched = w}
-          updateChart' w
       pure next
       where
         getResult = do
@@ -335,10 +290,8 @@ ui =
       pure next
 
     eval (SetWatched path flag next) = do
-      request update (Just $ FileData {path, watched: flag}) >>= unV'
-        \w -> do
-          H.modify _ {watched = w}
-          updateChart' w
+      request update (Just $ FileData {path, watched: flag})
+        >>= unV' \w -> H.modify _ {watched = w}
       pure next
 
     eval (Filter path next) = do
@@ -391,34 +344,3 @@ main = HA.runHalogenAff do
   io <- D.runUI ui unit body
 
   log "Running"
-
-options :: Date -> Date -> ChartSeries -> EM.DSL ETP.OptionI
-options a b (ChartSeries xs) = do
-  E.tooltip do
-    E.positionTop
-  E.visualMap $ E.continuous do
-    E.min 0.0
-    E.max 10.0
-    E.calculable true
-    E.orient ET.Horizontal
-    E.leftCenter
-    E.topTop
-  E.calendar do
-    E.calendarSpec do
-      E.buildRange do
-        E.addDateValue $ a
-        E.addDateValue $ b
-      E.buildCellSize do
-        E.autoValue
-        E.autoValue
-  E.series do
-    E.heatMap do
-      E.calendarCoordinateSystem
-      E.calendarIndex 0
-      E.buildItems
-        $ traverse_ E.addItem (pair <$> xs)
-  where
-    pair (ChartSeriesData {date, value}) = do
-      E.buildValues do
-        E.addStringValue date
-        E.addValue $ toNumber value
