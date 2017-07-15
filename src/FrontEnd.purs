@@ -2,6 +2,7 @@ module FrontEnd where
 
 import Prelude
 
+import CSS (borderColor, fromHexString, rgb)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
@@ -22,10 +23,10 @@ import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
 import Data.JSDate as JSDate
 import Data.List.NonEmpty (NonEmptyList)
-import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
+import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
-import Data.String (Pattern(..), contains, split, toLower)
+import Data.String (Pattern(..), contains, split, take, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
@@ -36,11 +37,13 @@ import Global.Unsafe (unsafeStringify)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
+import Halogen.HTML.CSS (style)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
+import Node.Crypto.Hash (Algorithm(..), hex)
 import Routes (Route(..), files, open, update, watched)
 import Types (FileData(..), OpenRequest(..), Path(..), WatchedData(..))
 
@@ -191,6 +194,9 @@ ui =
           HH.div
             [ HP.class_ $ wrap "file"]
             [ HH.h3
+              [ HP.class_ $ wrap "dot"
+              ] []
+            , HH.h3
               [ HP.class_ $ wrap "file-link"
               , HE.onClick $ HE.input_ (ChangeSorting Title)
               ] [ HH.text $ "Title" <> displayTicker Title ]
@@ -234,7 +240,12 @@ ui =
         file path =
           HH.div
             [ HP.class_ $ wrap "file"]
-            [ HH.a
+            [ HH.span
+              [ HP.class_ $ wrap "dot"
+              , style do
+                borderColor $ fromMaybe (rgb 255 105 180) dotColor
+              ] []
+            , HH.a
               [ HP.classes $ wrap <$>
                 [ "file-link"
                 , maybe "" (const "watched") watched
@@ -267,8 +278,16 @@ ui =
             getDate (WatchedData {created}) =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
+            -- whatever, we just need the name of the show kind of
+            hexColor = take 6 $ unsafePerformEff $ hex MD5 (show $ extract path)
+            dotColor = fromHexString $ "#" <> hexColor
 
     error' = H.liftEff <<< error
+
+    extract (Path s)
+      | [_, a] <- split (Pattern "] ") s
+      , [b, _] <- split (Pattern " -") a = Right b
+      | otherwise = Left "didn't match expected patterns"
 
     eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void (AppEffects eff)
     eval (Init next) = do
@@ -298,11 +317,6 @@ ui =
       case extract path of
         Left e -> error' e *> pure next
         Right s -> eval $ Search s next
-      where
-        extract (Path s)
-          | [_, a] <- split (Pattern "] ") s
-          , [b, _] <- split (Pattern " -") a = Right b
-          | otherwise = Left "didn't match expected patterns"
 
     eval (Search str next) = do
       H.modify _ {search = str}
