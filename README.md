@@ -1,5 +1,7 @@
 # vidtracker
 
+blog post about this [here](http://qiita.com/kimagure/items/b576b5bfe370180599f8)
+
 a simple application written with [Hyper](https://github.com/owickstrom/hyper) to keep track of videos watched and make opening them easier
 
 features a [Halogen](https://github.com/slamdata/purescript-halogen) front end. full stack purescript!!
@@ -10,4 +12,4 @@ uses DB file "filetracker" `CREATE TABLE watched (path varchar(20) primary key u
 
 Screenshot:
 
-![](http://i.imgur.com/wIVpcjc.png)
+![](http://i.imgur.com/SG6vSil.png)
