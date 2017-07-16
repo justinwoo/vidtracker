@@ -24,6 +24,9 @@
     "purescript-now": "^3.0.0",
     "purescript-crypto": "^0.1.2",
     "purescript-halogen-css": "^6.0.0",
-    "purescript-colors": "^3.0.0"
+    "purescript-colors": "^3.0.0",
+    "purescript-simple-json": "^0.2.0",
+    "purescript-node-fs-aff": "^4.0.0",
+    "purescript-lenient-html-parser": "^0.3.2"
   }
 }

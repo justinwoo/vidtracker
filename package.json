@@ -12,13 +12,16 @@
     "build:fe": "pulp browserify -m FrontEnd --to dist/index.js",
     "watch:build": "pulp -w build",
     "watch:fe": "webpack -w",
-    "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\""
+    "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\"",
+    "get-icons": "pulp run --main GetIcons"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "echarts": "^3.6.2",
-    "sqlite3": "^3.1.8"
+    "rimraf": "^2.6.1",
+    "sqlite3": "^3.1.8",
+    "xhr2": "^0.1.4"
   },
   "devDependencies": {
     "concurrently": "^3.5.0",

@@ -7,3 +7,5 @@
 /.psa*
 /dist/index.js
 index.js
+/dist/icons
+icons-config.json

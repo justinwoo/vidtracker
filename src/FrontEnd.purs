@@ -2,7 +2,7 @@ module FrontEnd where
 
 import Prelude
 
-import CSS (borderColor, fromHexString, rgb)
+import CSS (backgroundImage, borderColor, fromHexString, rgb, url)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
@@ -33,6 +33,7 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import ECharts.Types as ET
 import FrontEnd.Chart as Chart
+import Global (encodeURIComponent)
 import Global.Unsafe (unsafeStringify)
 import Halogen as H
 import Halogen.Aff as HA
@@ -47,11 +48,13 @@ import Node.Crypto.Hash (Algorithm(..), hex)
 import Routes (Route(..), files, open, update, watched)
 import Types (FileData(..), OpenRequest(..), Path(..), WatchedData(..))
 
+reverse' :: String -> String
 reverse' = fromCharArray <<< reverse <<< toCharArray
 
+extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s)
   | [_, a] <- split (Pattern "] ") s
-  , result <- split (Pattern " -") (reverse' a)
+  , result <- split (Pattern " - ") (reverse' a)
   , Just b <- head $ drop 1 result = Right (reverse' b)
   | otherwise = Left "didn't match expected patterns"
 
@@ -251,7 +254,11 @@ ui =
             [ HH.span
               [ HP.class_ $ wrap "dot"
               , style do
-                borderColor $ fromMaybe (rgb 255 105 180) dotColor
+                case extractNameKinda path of
+                  Right name ->
+                    backgroundImage (url $ "icons/" <> encodeURIComponent name)
+                  Left e -> pure mempty
+                -- borderColor $ fromMaybe (rgb 255 105 180) dotColor
               ] []
             , HH.a
               [ HP.classes $ wrap <$>
@@ -286,9 +293,9 @@ ui =
             getDate (WatchedData {created}) =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
-            -- whatever, we just need the name of the show kind of
-            hexColor = take 6 $ unsafePerformEff $ hex MD5 (show $ extractNameKinda path)
-            dotColor = fromHexString $ "#" <> hexColor
+            -- -- whatever, we just need the name of the show kind of
+            -- hexColor = take 6 $ unsafePerformEff $ hex MD5 (show $ extractNameKinda path)
+            -- dotColor = fromHexString $ "#" <> hexColor
 
     error' = H.liftEff <<< error
 
