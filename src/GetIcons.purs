@@ -9,6 +9,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exc
 import Control.Monad.Except (runExcept)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
 import Data.List (find, (:))
 import Data.Maybe (Maybe(..))
@@ -56,19 +57,15 @@ downloadIconIfNotExist :: Config -> Set String -> String -> Aff _ Unit
 downloadIconIfNotExist config existing name =
   unless (member name existing) do
     log $ "gonna get " <> name
-    html :: String <- _.response <$> get (config.queryUrl <> name)
-    case parseTags html of
-      Right tags -> do
-        case extractFirstImage tags of
-          Right imageUrl -> do
-            log $ "downloading from " <> imageUrl
-            curl imageUrl (iconsPath <> "/" <> encodeURIComponent name)
-            pure unit
-          Left e ->
-            error e
+    html <- _.response <$> get (config.queryUrl <> name)
+    case extractFirstImage =<<
+      (lmap (append "couldn't get tags " <<< show) (parseTags html)) of
+      Right url -> do
+        log $ "downloading from " <> url
+        curl url (iconsPath <> "/" <> encodeURIComponent name)
         pure unit
       Left e ->
-        error $ "couldn't get tags " <> show e
+        error e
   where
     matchSrc (Attribute (Name name) _) = name == "src"
     extractFirstImage tags =
