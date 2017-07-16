@@ -16,7 +16,7 @@ import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
 import DOM (DOM)
-import Data.Array (filter, reverse, sort, sortWith)
+import Data.Array (drop, filter, head, reverse, sort, sortWith)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
 import Data.Foreign.Class (class Encode, class Decode, encode)
@@ -26,7 +26,7 @@ import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
-import Data.String (Pattern(..), contains, split, take, toLower)
+import Data.String (Pattern(Pattern), contains, fromCharArray, split, take, toCharArray, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
@@ -46,6 +46,14 @@ import Network.HTTP.Affjax as AJ
 import Node.Crypto.Hash (Algorithm(..), hex)
 import Routes (Route(..), files, open, update, watched)
 import Types (FileData(..), OpenRequest(..), Path(..), WatchedData(..))
+
+reverse' = fromCharArray <<< reverse <<< toCharArray
+
+extractNameKinda (Path s)
+  | [_, a] <- split (Pattern "] ") s
+  , result <- split (Pattern " -") (reverse' a)
+  , Just b <- head $ drop 1 result = Right (reverse' b)
+  | otherwise = Left "didn't match expected patterns"
 
 type VE a = V (NonEmptyList ForeignError) a
 
@@ -279,15 +287,10 @@ ui =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
             -- whatever, we just need the name of the show kind of
-            hexColor = take 6 $ unsafePerformEff $ hex MD5 (show $ extract path)
+            hexColor = take 6 $ unsafePerformEff $ hex MD5 (show $ extractNameKinda path)
             dotColor = fromHexString $ "#" <> hexColor
 
     error' = H.liftEff <<< error
-
-    extract (Path s)
-      | [_, a] <- split (Pattern "] ") s
-      , [b, _] <- split (Pattern " -") a = Right b
-      | otherwise = Left "didn't match expected patterns"
 
     eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void (AppEffects eff)
     eval (Init next) = do
@@ -314,7 +317,7 @@ ui =
       pure next
 
     eval (Filter path next) = do
-      case extract path of
+      case extractNameKinda path of
         Left e -> error' e *> pure next
         Right s -> eval $ Search s next
 
