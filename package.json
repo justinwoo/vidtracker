@@ -8,12 +8,12 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build:get-icons": "pulp build --main GetIcons --to get-icons.js",
     "build:be": "pulp build --to index.js",
     "build:fe": "pulp browserify -m FrontEnd --to dist/index.js",
     "watch:build": "pulp -w build",
     "watch:fe": "webpack -w",
-    "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\"",
-    "get-icons": "pulp run --main GetIcons"
+    "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\""
   },
   "author": "",
   "license": "MIT",
