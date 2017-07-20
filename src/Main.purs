@@ -40,7 +40,7 @@ import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
-import Routes (Route(Route), files, open, update, watched)
+import Routes (Route(Route), files, getIcons, open, update, watched)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
 import Types (FileData(..), OpenRequest(..), Path(..), Success(..))
 
@@ -149,6 +149,7 @@ main = launchAff $
         t
           | match t files -> handleFiles files
           | match t watched -> handleWatched watched
+          | match t getIcons -> handleGetIcons getIcons
           | match t open -> handleOpen open
           | match t update -> handleUpdate update
           | otherwise -> fileServer "dist" notFound
@@ -187,6 +188,10 @@ main = launchAff $
 
           handleOpen r = withBody r \(OpenRequest or) -> do
             _ <- liftEff $ spawn openExe (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+            respondJSON' r $ Success {status: "success"}
+
+          handleGetIcons r = withBody r \_ -> do
+            _ <- liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
             respondJSON' r $ Success {status: "success"}
 
           handleUpdate r = withBody r \(FileData ur) -> do

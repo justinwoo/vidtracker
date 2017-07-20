@@ -45,8 +45,8 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
 import Node.Crypto.Hash (Algorithm(..), hex)
-import Routes (Route(..), files, open, update, watched)
-import Types (FileData(..), OpenRequest(..), Path(..), WatchedData(..))
+import Routes (Route(..), files, getIcons, open, update, watched)
+import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), WatchedData(..))
 
 reverse' :: String -> String
 reverse' = fromCharArray <<< reverse <<< toCharArray
@@ -113,6 +113,7 @@ type State =
 data Query a
   = Init a
   | FetchData a
+  | GetIcons a
   | OpenFile Path a
   | SetWatched Path Boolean a
   | Filter Path a
@@ -162,6 +163,7 @@ ui =
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
           , heatmap
           , refreshButton
+          , getIconsButton
           , filterCheckbox
           , search
           , header
@@ -178,6 +180,15 @@ ui =
             , HE.onClick <<< HE.input_ $ FetchData
             ]
             [ HH.text "Refresh" ]
+        getIconsButton =
+          HH.button
+            [ HP.classes $ wrap <$>
+              [ "get-icons"
+              , "pure-button"
+              ]
+            , HE.onClick <<< HE.input_ $ GetIcons
+            ]
+            [ HH.text "Run Get Icons" ]
         filterCheckbox =
           HH.button
             [ HP.classes $ wrap <$>
@@ -313,6 +324,10 @@ ui =
           files <- request files Nothing
           watched <- request watched Nothing
           pure $ Tuple <$> files <*> watched
+
+    eval (GetIcons next) = do
+      _ <- request getIcons $ Just GetIconsRequest
+      pure next
 
     eval (OpenFile path next) = do
       _ <- request open $ Just (OpenRequest {path})

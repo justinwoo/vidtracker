@@ -28,6 +28,13 @@ derive instance ntPath :: Newtype Path _
 derive newtype instance isPath :: Decode Path
 derive newtype instance asPath :: Encode Path
 
+data GetIconsRequest = GetIconsRequest
+derive instance grGIR :: Generic GetIconsRequest _
+instance ifGIR :: Decode GetIconsRequest where
+  decode = genericDecode'
+instance afGIR :: Encode GetIconsRequest where
+  encode = genericEncode'
+
 newtype OpenRequest = OpenRequest
   { path :: Path
   }
