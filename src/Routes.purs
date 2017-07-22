@@ -3,7 +3,7 @@ module Routes where
 import Data.Foreign.Class (class Encode, class Decode)
 import Data.HTTP.Method (Method(..))
 import Data.Newtype (class Newtype)
-import Types (FileData, GetIconsRequest, OpenRequest, Path, Success, WatchedData)
+import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Success, WatchedData)
 
 newtype Route req res (url :: Symbol) = Route
   { method :: Method
@@ -28,3 +28,6 @@ getIcons = Route {method: POST}
 
 update :: Route FileData (Array WatchedData) "/api/update"
 update = Route {method: POST}
+
+remove :: Route RemoveRequest Success "/api/remove"
+remove = Route {method: POST}

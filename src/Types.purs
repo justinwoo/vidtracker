@@ -35,6 +35,15 @@ instance ifGIR :: Decode GetIconsRequest where
 instance afGIR :: Encode GetIconsRequest where
   encode = genericEncode'
 
+newtype RemoveRequest = RemoveRequest
+  { path :: Path
+  }
+derive instance grRR :: Generic RemoveRequest _
+instance ifRR :: Decode RemoveRequest where
+  decode = genericDecode'
+instance afRR :: Encode RemoveRequest where
+  encode = genericEncode'
+
 newtype OpenRequest = OpenRequest
   { path :: Path
   }

@@ -3,7 +3,7 @@ module Main where
 import Prelude
 
 import Control.IxMonad (ibind, (:*>), (:>>=))
-import Control.Monad.Aff (Aff, Canceler, launchAff)
+import Control.Monad.Aff (Aff, Canceler, attempt, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
@@ -34,15 +34,15 @@ import Node.Buffer (BUFFER, Buffer, create, writeString)
 import Node.ChildProcess (CHILD_PROCESS, defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
-import Node.FS.Aff (readdir, stat)
+import Node.FS.Aff (mkdir, readdir, rename, stat)
 import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
-import Routes (Route(Route), files, getIcons, open, update, watched)
+import Routes (Route(Route), files, getIcons, open, remove, update, watched)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
-import Types (FileData(..), OpenRequest(..), Path(..), Success(..))
+import Types (FileData(..), OpenRequest(..), Path(..), RemoveRequest(..), Success(..))
 
 readdir' :: forall eff.
   String
@@ -148,6 +148,7 @@ main = launchAff $
           | match t getIcons -> handleGetIcons getIcons
           | match t open -> handleOpen open
           | match t update -> handleUpdate update
+          | match t remove -> handleRemove remove
           | otherwise -> fileServer "dist" notFound
         where
           bind = ibind
@@ -197,5 +198,14 @@ main = launchAff $
               then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
               else queryDB' "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
             handleWatched watched
+
+          handleRemove r = withBody r \(RemoveRequest rr) -> do
+            let archive = concat [dir, "archive"]
+            let name = unwrap rr.path
+            let old = concat [dir, name]
+            let new = concat [archive, name]
+            _ <- lift' <<< attempt $ mkdir archive
+            _ <- lift' $ rename old new
+            respondJSON' r $ Success {status: "success"}
 
           queryDB' query params = lift' $ queryDB db query params

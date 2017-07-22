@@ -26,6 +26,7 @@ import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
+import Data.Set (Set, insert, member)
 import Data.String (Pattern(Pattern), contains, fromCharArray, split, take, toCharArray, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
@@ -45,8 +46,8 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
 import Node.Crypto.Hash (Algorithm(..), hex)
-import Routes (Route(..), files, getIcons, open, update, watched)
-import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), WatchedData(..))
+import Routes (Route(..), files, getIcons, open, remove, update, watched)
+import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
 
 reverse' :: String -> String
 reverse' = fromCharArray <<< reverse <<< toCharArray
@@ -108,6 +109,7 @@ type State =
   , filterWatched :: Boolean
   , sorting :: Sorting
   , search :: String
+  , deleteConfirmations :: Set Path
   }
 
 data Query a
@@ -121,6 +123,8 @@ data Query a
   | Search String a
   | ClearSearch a
   | ToggleFilterWatched Boolean a
+  | ConfirmDeletion Path a
+  | Delete Path a
 
 type AppEffects eff =
   Aff
@@ -154,6 +158,7 @@ ui =
       , filterWatched: false
       , sorting: NoSorting
       , search: mempty
+      , deleteConfirmations: mempty
       }
 
     render :: State -> H.ParentHTML Query Chart.Query Slot (AppEffects eff)
@@ -230,6 +235,9 @@ ui =
             , HH.h3
               [ HP.class_ $ wrap "filter-link"
               ] [ HH.text "" ]
+            , HH.h3
+              [ HP.class_ $ wrap "delete-link"
+              ] [ HH.text "" ]
             ]
         files =
           file <$> applyTransforms state.files
@@ -298,9 +306,28 @@ ui =
               , HE.onClick $ HE.input_ (Filter path)
               ]
               [ HH.text "set filter" ]
+            , HH.button
+              [ HP.classes $ wrap <$>
+                [ "delete-link"
+                , "pure-button"
+                , if deleteConfirmation
+                    then "delete-confirmation"
+                    else ""
+                ]
+              , HE.onClick $ HE.input_ $
+                  if deleteConfirmation
+                    then (Delete path)
+                    else (ConfirmDeletion path)
+              ]
+              [ HH.text
+                  if deleteConfirmation
+                    then "Confirm"
+                    else "Delete"
+              ]
             ]
           where
             watched = getDate <$> findWatched path
+            deleteConfirmation = member path state.deleteConfirmations
             getDate (WatchedData {created}) =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
@@ -364,6 +391,14 @@ ui =
     eval (ToggleFilterWatched flag next) = do
       H.modify _ {filterWatched = flag}
       pure next
+
+    eval (ConfirmDeletion path next) = do
+      H.modify \s -> s {deleteConfirmations = insert path s.deleteConfirmations}
+      pure next
+
+    eval (Delete path next) = do
+      _ <- request remove $  Just (RemoveRequest {path})
+      eval (FetchData next)
 
 main :: forall e.
   Eff
