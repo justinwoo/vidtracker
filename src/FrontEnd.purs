@@ -23,11 +23,11 @@ import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
 import Data.JSDate as JSDate
 import Data.List.NonEmpty (NonEmptyList)
-import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust, isNothing, maybe)
+import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.Set (Set, insert, member)
-import Data.String (Pattern(Pattern), contains, fromCharArray, split, take, toCharArray, toLower)
+import Data.String (Pattern(Pattern), Replacement(..), contains, fromCharArray, replace, split, toCharArray, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
@@ -45,7 +45,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
-import Node.Crypto.Hash (Algorithm(..), hex)
 import Routes (Route(..), files, getIcons, open, remove, update, watched)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
 
@@ -56,7 +55,8 @@ extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s)
   | [_, a] <- split (Pattern "] ") s
   , result <- split (Pattern " - ") (reverse' a)
-  , Just b <- head $ drop 1 result = Right (reverse' b)
+  , Just b <- head $ drop 1 result
+  , c <- replace (Pattern ".") (Replacement "") b = Right (reverse' c)
   | otherwise = Left "didn't match expected patterns"
 
 type VE a = V (NonEmptyList ForeignError) a
