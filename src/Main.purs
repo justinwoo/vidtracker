@@ -31,7 +31,7 @@ import Hyper.Request (getRequestData, readBody)
 import Hyper.Response (headers, respond, writeStatus)
 import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
 import Node.Buffer (BUFFER, Buffer, create, writeString)
-import Node.ChildProcess (CHILD_PROCESS, defaultSpawnOptions, spawn)
+import Node.ChildProcess (CHILD_PROCESS, defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
 import Node.FS.Aff (readdir, stat)
@@ -77,7 +77,6 @@ getBuffer size json = do
 newtype Config = Config
   { db :: DBConnection
   , dir :: String
-  , openExe :: String
   }
 
 type AppEffects eff =
@@ -106,10 +105,7 @@ main = launchAff $
     Nothing -> error "we done broke now!!!!"
     Just dir -> do
       db <- ensureDB $ concat [dir, "filetracker"]
-      let openExe = case platform of
-                      Darwin -> "open"
-                      _      -> "explorer"
-      let config = Config {db, dir, openExe}
+      let config = Config {db, dir}
       liftEff $ runServer options config router
   where
     router = getConn :>>= handleConn
@@ -143,7 +139,7 @@ main = launchAff $
       writeStatus statusBadRequest
       :*> headers []
       :*> respond ("bad JSON: " <> show e)
-    handleConn conn@{components: Config {dir, db, openExe}} = do
+    handleConn conn@{components: Config {dir, db}} = do
       request <- getRequestData
       case Tuple request.method request.url of
         t
@@ -187,7 +183,9 @@ main = launchAff $
             respondJSON $ unsafeStringify rows
 
           handleOpen r = withBody r \(OpenRequest or) -> do
-            _ <- liftEff $ spawn openExe (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+            _ <- case platform of
+              Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+              _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
             respondJSON' r $ Success {status: "success"}
 
           handleGetIcons r = withBody r \_ -> do
