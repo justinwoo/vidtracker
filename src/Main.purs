@@ -205,7 +205,7 @@ main = launchAff $
             let old = concat [dir, name]
             let new = concat [archive, name]
             _ <- lift' <<< attempt $ mkdir archive
-            _ <- lift' $ rename old new
+            _ <- lift' <<< attempt $ rename old new
             respondJSON' r $ Success {status: "success"}
 
           queryDB' query params = lift' $ queryDB db query params
