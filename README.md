@@ -17,4 +17,4 @@ features a [Halogen](https://github.com/slamdata/purescript-halogen) front end. 
 
 Screenshot:
 
-![](http://i.imgur.com/SG6vSil.png)
+![](http://i.imgur.com/ijyaVcM.png)
