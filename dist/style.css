@@ -1,0 +1,20 @@
+.container { margin: 0 auto 0 auto ; width: 1024.0px }
+.heatmap { width: 100.0%; height: 300.0px }
+.filterwatched { margin-top: 10.0px }
+.filterwatched h4 { display: inline; margin-right: 5.0px }
+.refreshfiles { margin-top: 10.0px; display: block }
+.geticons { margin-top: 10.0px; display: block }
+.file { display: flex; flex-direction: row; align-items: center }
+.watched { background-color: hsla(208.83, 100.0%, 45.29%, 0.1) }
+.dot { width: 50.0px; height: 50.0px; background-size: cover; border-radius: 50.0px 50.0px 50.0px 50.0px ; background-position: 50.0% 50.0%; background-repeat: no-repeat }
+.dot * { position: absolute }
+.filterlink { width: 100.0px; opacity: 0.25 }
+.filterlink:hover { opacity: 1.0 }
+.deletelink { box-sizing: border-box; margin-left: 1.0rem; width: 100.0px; opacity: 0.25 }
+.deletelink:hover { opacity: 1.0 }
+.deleteconfirmation { background-color: hsl(0.0, 100.0%, 50.0%); color: hsl(0.0, 0.0%, 100.0%) }
+.filelink { flex-grow: 1; flex-shrink: 1; flex-basis: 0; padding: 10.0px 10.0px 10.0px 10.0px  }
+.filebutton { width: 200.0px }
+.filenote { width: 150.0px; margin: 10.0px 10.0px 10.0px 10.0px  }
+h3 { user-select: none; cursor: pointer }
+a:hover { text-decoration: underline; cursor: pointer; background-color: hsla(60.0, 100.0%, 50.0%, 0.25) }

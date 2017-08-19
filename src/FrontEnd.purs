@@ -34,6 +34,7 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import ECharts.Types as ET
 import FrontEnd.Chart as Chart
+import FrontEnd.Style as Styles
 import Global (encodeURIComponent)
 import Global.Unsafe (unsafeStringify)
 import Halogen as H
@@ -164,7 +165,7 @@ ui =
     render :: State -> H.ParentHTML Query Chart.Query Slot (AppEffects eff)
     render state =
       HH.div
-        [ HP.class_ $ wrap "container" ]
+        [ HP.class_ $ Styles.container ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
           , heatmap
           , refreshButton
@@ -178,34 +179,33 @@ ui =
           HH.slot ChartSlot Chart.component state.watched absurd
         refreshButton =
           HH.button
-            [ HP.classes $ wrap <$>
-              [ "refresh-files"
-              , "pure-button"
+            [ HP.classes $
+              [ Styles.refreshFiles
+              , wrap "pure-button"
               ]
             , HE.onClick <<< HE.input_ $ FetchData
             ]
             [ HH.text "Refresh" ]
         getIconsButton =
           HH.button
-            [ HP.classes $ wrap <$>
-              [ "get-icons"
-              , "pure-button"
+            [ HP.classes $
+              [ Styles.getIcons
+              , wrap "pure-button"
               ]
             , HE.onClick <<< HE.input_ $ GetIcons
             ]
             [ HH.text "Run Get Icons" ]
         filterCheckbox =
           HH.button
-            [ HP.classes $ wrap <$>
-              [ "filter-watched"
-              , "pure-button"
-              ] <> (guard state.filterWatched $> "pure-button-primary")
+            [ HP.classes $
+              [ Styles.filterWatched
+              , wrap "pure-button"
+              ] <> (guard state.filterWatched $> wrap "pure-button-primary")
             , HE.onClick <<< HE.input_ <<< ToggleFilterWatched <<< not $ state.filterWatched
             ]
             [ HH.text "Filter Watched" ]
         search =
-          HH.div
-            [ HP.class_ $ wrap "search" ]
+          HH.div_
             $ [ HH.h4_ [ HH.text "Search" ]
               , HH.input
                   [ HP.value state.search
@@ -219,24 +219,24 @@ ui =
               [ HH.text "Clear" ]
         header =
           HH.div
-            [ HP.class_ $ wrap "file"]
+            [ HP.class_ $ Styles.file]
             [ HH.h3
-              [ HP.class_ $ wrap "dot"
+              [ HP.class_ $ Styles.dot
               ] []
             , HH.h3
-              [ HP.class_ $ wrap "file-link"
+              [ HP.class_ $ Styles.fileLink
               , HE.onClick $ HE.input_ (ChangeSorting Title)
               ] [ HH.text $ "Title" <> displayTicker Title ]
             , HH.h3
-              [ HP.class_ $ wrap "file-button"
+              [ HP.class_ $ Styles.fileButton
               , HE.onClick $ HE.input_ (ChangeSorting Status)
               ] [ HH.text $ "Status" <> displayTicker Status ]
-            , HH.h3 [HP.class_ $ wrap "file-note"] [ HH.text "Date" ]
+            , HH.h3 [HP.class_ $ Styles.fileNote ] [ HH.text "Date" ]
             , HH.h3
-              [ HP.class_ $ wrap "filter-link"
+              [ HP.class_ $ Styles.filterLink
               ] [ HH.text "" ]
             , HH.h3
-              [ HP.class_ $ wrap "delete-link"
+              [ HP.class_ $ Styles.deleteLink
               ] [ HH.text "" ]
             ]
         files =
@@ -269,9 +269,9 @@ ui =
         findWatched path = find (\(WatchedData fd) -> fd.path == path) state.watched
         file path =
           HH.div
-            [ HP.class_ $ wrap "file"]
+            [ HP.class_ $ Styles.file ]
             [ HH.span
-              [ HP.class_ $ wrap "dot"
+              [ HP.class_ $ Styles.dot
               , style do
                 case extractNameKinda path of
                   Right name ->
@@ -280,39 +280,36 @@ ui =
                 -- borderColor $ fromMaybe (rgb 255 105 180) dotColor
               ] []
             , HH.a
-              [ HP.classes $ wrap <$>
-                [ "file-link"
-                , maybe "" (const "watched") watched
-                ]
+              [ HP.class_ Styles.fileLink
               , HE.onClick $ HE.input_ (OpenFile path) ]
               [ HH.text $ unwrap path ]
             , HH.button
-              [ HP.classes $ wrap <$>
-                [ "file-button"
-                , "pure-button"
-                , maybe "" (const "pure-button-primary") watched
+              [ HP.classes $
+                [ Styles.fileButton
+                , wrap "pure-button"
+                , wrap $ maybe "" (const "pure-button-primary") watched
                 ]
               , HE.onClick $ HE.input_ (SetWatched path (not $ isJust watched))
               ]
               [ HH.text $ maybe "not watched" (const "watched") watched ]
             , HH.span
-              [ HP.class_ $ wrap "file-note" ]
+              [ HP.class_ $ Styles.fileNote ]
               [ HH.text $ maybe "" id watched ]
             , HH.button
-              [ HP.classes $ wrap <$>
-                [ "filter-link"
-                , "pure-button"
+              [ HP.classes $
+                [ Styles.filterLink
+                , wrap "pure-button"
                 ]
               , HE.onClick $ HE.input_ (Filter path)
               ]
               [ HH.text "set filter" ]
             , HH.button
-              [ HP.classes $ wrap <$>
-                [ "delete-link"
-                , "pure-button"
+              [ HP.classes $
+                [ Styles.deleteLink
+                , wrap "pure-button"
                 , if deleteConfirmation
-                    then "delete-confirmation"
-                    else ""
+                    then Styles.deleteConfirmation
+                    else wrap ""
                 ]
               , HE.onClick $ HE.input_ $
                   if deleteConfirmation
@@ -331,9 +328,6 @@ ui =
             getDate (WatchedData {created}) =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
-            -- -- whatever, we just need the name of the show kind of
-            -- hexColor = take 6 $ unsafePerformEff $ hex MD5 (show $ extractNameKinda path)
-            -- dotColor = fromHexString $ "#" <> hexColor
 
     error' = H.liftEff <<< error
 

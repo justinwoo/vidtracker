@@ -11,7 +11,8 @@
     "build:get-icons": "pulp build --main GetIcons --to get-icons.js",
     "build:be": "pulp build --to index.js",
     "build:fe": "pulp browserify -m FrontEnd --to dist/index.js",
-    "build": "npm run build:fe && npm run build:be && npm run build:get-icons",
+    "build:generate-css": "pulp run -m GenerateStylesheet",
+    "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css",
     "watch:build": "pulp -w build",
     "watch:fe": "webpack -w",
     "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\""

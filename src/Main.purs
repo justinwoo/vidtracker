@@ -5,6 +5,7 @@ import Prelude
 import Control.IxMonad (ibind, (:*>), (:>>=))
 import Control.Monad.Aff (Aff, Canceler, attempt, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -15,7 +16,7 @@ import Data.Array (filter, sortBy)
 import Data.Either (Either(..), either)
 import Data.Foreign.Class (class Encode, class Decode, encode)
 import Data.Foreign.Generic (decodeJSON)
-import Data.HTTP.Method (CustomMethod, Method)
+import Data.HTTP.Method (CustomMethod, Method(..))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
 import Data.String (Pattern(..), contains, length)
@@ -34,7 +35,7 @@ import Node.Buffer (BUFFER, Buffer, create, writeString)
 import Node.ChildProcess (CHILD_PROCESS, defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
-import Node.FS.Aff (mkdir, readdir, rename, stat)
+import Node.FS.Aff (mkdir, readTextFile, readdir, rename, stat)
 import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
@@ -149,9 +150,13 @@ main = launchAff $
           | match t open -> handleOpen open
           | match t update -> handleUpdate update
           | match t remove -> handleRemove remove
+          | matchStyles t -> handleStyles
           | otherwise -> fileServer "dist" notFound
         where
           bind = ibind
+          matchStyles (Tuple _ u)
+            | u == "/style.css" = true
+            | otherwise = false
           match :: forall req res url
             . IsSymbol url
             => Tuple (Either Method CustomMethod) String
@@ -174,6 +179,16 @@ main = launchAff $
               respondBadRequest
               handler
               (runExcept $ decodeJSON body)
+
+          handleStyles = do
+            file <- liftAff $ attempt $ readTextFile UTF8 "./dist/style.css"
+            case file of
+              Right content -> do
+                writeStatus statusOK
+                :*> headers [Tuple "Content-Type" "text/css"]
+                :*> respond content
+              Left e -> do
+                notFound
 
           handleFiles r = do
             files <- lift' $ readdir' dir
