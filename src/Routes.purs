@@ -1,18 +1,15 @@
 module Routes where
 
-import Data.Foreign.Class (class Encode, class Decode)
+import Data.Foreign (Foreign)
 import Data.HTTP.Method (Method(..))
-import Data.Newtype (class Newtype)
 import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Success, WatchedData)
 
 newtype Route req res (url :: Symbol) = Route
   { method :: Method
   }
 
-newtype Unused = Unused String
-derive instance ntU :: Newtype Unused _
-derive newtype instance isUU :: Decode Unused
-derive newtype instance asUU :: Encode Unused
+-- Unused params don't need to be decoded or encoded
+type Unused = Foreign
 
 files :: Route Unused (Array Path) "/api/files"
 files = Route {method: GET}

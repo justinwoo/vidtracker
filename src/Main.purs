@@ -14,10 +14,8 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Except (runExcept)
 import Data.Array (filter, sortBy)
 import Data.Either (Either(..), either)
-import Data.Foreign.Class (class Encode, class Decode, encode)
-import Data.Foreign.Generic (decodeJSON)
-import Data.HTTP.Method (CustomMethod, Method(..))
-import Data.Maybe (Maybe(Just, Nothing))
+import Data.HTTP.Method (CustomMethod, Method)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.String (Pattern(..), contains, length)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
@@ -43,6 +41,7 @@ import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
 import Routes (Route(Route), files, getIcons, open, remove, update, watched)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
+import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), OpenRequest(..), Path(..), RemoveRequest(..), Success(..))
 
 readdir' :: forall eff.
@@ -131,11 +130,11 @@ main = launchAff $
     respond' json = respond json
     respondJSON' :: forall req res url
       . IsSymbol url
-      => Encode res
+      => WriteForeign res
       => Route req res url
       -> res
       -> _
-    respondJSON' _ = respondJSON <<< unsafeStringify <<< encode
+    respondJSON' _ = respondJSON <<< writeJSON
     respondBadRequest e =
       writeStatus statusBadRequest
       :*> headers []
@@ -169,7 +168,7 @@ main = launchAff $
             where
               url = reflectSymbol (SProxy :: SProxy url)
           withBody :: forall req res url
-            . Decode req
+            . ReadForeign req
             => Route req res url
             -> (req -> _)
             -> _
@@ -178,7 +177,7 @@ main = launchAff $
             either
               respondBadRequest
               handler
-              (runExcept $ decodeJSON body)
+              (runExcept $ readJSON body)
 
           handleStyles = do
             file <- liftAff $ attempt $ readTextFile UTF8 "./dist/style.css"
@@ -200,7 +199,7 @@ main = launchAff $
 
           handleOpen r = withBody r \(OpenRequest or) -> do
             _ <- case platform of
-              Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+              Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
               _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
             respondJSON' r $ Success {status: "success"}
 

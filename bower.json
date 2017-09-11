@@ -10,23 +10,27 @@
     "purescript-prelude": "^3.1.0",
     "purescript-console": "^3.0.0",
     "purescript-hyper": "^0.8.0",
-    "purescript-node-process": "^4.0.0",
+    "purescript-node-process": "^5.0.0",
     "purescript-node-sqlite3": "^0.5.0",
-    "purescript-foreign-generic": "^4.1.0",
+    "purescript-foreign-generic": "^5.0.0",
     "purescript-foreign": "^4.0.1",
     "purescript-node-child-process": "^4.0.0",
     "purescript-affjax": "^4.0.0",
     "purescript-validation": "^3.1.0",
-    "purescript-halogen": "^2.1.0",
+    "purescript-halogen": "^2.2.0",
     "purescript-dom-classy": "^2.1.0",
     "purescript-numbers": "^5.0.0",
-    "purescript-echarts": "^5.0.0",
+    "purescript-echarts": "^7.0.0",
     "purescript-now": "^3.0.0",
     "purescript-crypto": "^0.1.2",
     "purescript-halogen-css": "^6.0.0",
-    "purescript-colors": "^3.0.0",
-    "purescript-simple-json": "^0.2.0",
+    "purescript-colors": "^4.2.0",
+    "purescript-simple-json": "^0.9.0",
     "purescript-node-fs-aff": "^4.0.0",
-    "purescript-lenient-html-parser": "^0.3.2"
+    "purescript-lenient-html-parser": "^1.0.0"
+  },
+  "resolutions": {
+    "purescript-colors": "^3.0.0",
+    "purescript-arraybuffer-types": "^1.0.0"
   }
 }

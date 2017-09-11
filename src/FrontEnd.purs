@@ -19,8 +19,6 @@ import DOM (DOM)
 import Data.Array (drop, filter, head, reverse, sort, sortWith)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
-import Data.Foreign.Class (class Encode, class Decode, encode)
-import Data.Foreign.Generic (decodeJSON)
 import Data.JSDate as JSDate
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
@@ -36,7 +34,6 @@ import ECharts.Types as ET
 import FrontEnd.Chart as Chart
 import FrontEnd.Style as Styles
 import Global (encodeURIComponent)
-import Global.Unsafe (unsafeStringify)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
@@ -47,6 +44,7 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
 import Routes (Route(..), files, getIcons, open, remove, update, watched)
+import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
 
 reverse' :: String -> String
@@ -68,8 +66,8 @@ request :: forall req res url m eff.
     | eff
     )
     m
-  => Encode req
-  => Decode res
+  => WriteForeign req
+  => ReadForeign res
   => IsSymbol url
   => Route req res url -> Maybe req -> m (VE res)
 request (Route route) body =
@@ -78,10 +76,10 @@ request (Route route) body =
     action = AJ.affjax $ AJ.defaultRequest
       { method = Left route.method
       , url = reflectSymbol (SProxy :: SProxy url)
-      , content = unsafeStringify <<< encode <$> body
+      , content = writeJSON <$> body
       }
     parseResponse response =
-      runExcept $ decodeJSON response.response
+      runExcept $ readJSON response.response
 
 unV' :: forall e a m.
   MonadAff
@@ -347,7 +345,7 @@ ui =
           pure $ Tuple <$> files <*> watched
 
     eval (GetIcons next) = do
-      _ <- request getIcons $ Just GetIconsRequest
+      _ <- request getIcons $ Just (GetIconsRequest {})
       pure next
 
     eval (OpenFile path next) = do

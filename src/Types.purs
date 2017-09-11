@@ -1,69 +1,40 @@
 module Types where
 
 import Prelude
-import Data.Foreign (Foreign, F)
-import Data.Foreign.Class (class Decode, class Encode)
-import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
-import Data.Foreign.Generic.Class (class GenericDecode, class GenericEncode)
-import Data.Foreign.Generic.Types (SumEncoding)
-import Data.Generic.Rep (class Generic)
+
 import Data.Newtype (class Newtype)
-
-options :: { unwrapSingleConstructors :: Boolean
-, sumEncoding :: SumEncoding
-, unwrapSingleArguments :: Boolean
-}
-options = defaultOptions {unwrapSingleConstructors = true}
-
-genericDecode' :: forall a rep. Generic a rep => GenericDecode rep => Foreign -> F a
-genericDecode' = genericDecode options
-
-genericEncode' :: forall a rep. Generic a rep => GenericEncode rep => a -> Foreign
-genericEncode' = genericEncode options
+import Simple.JSON (class ReadForeign, class WriteForeign)
 
 newtype Path = Path String
 derive instance eqPath :: Eq Path
 derive instance ordPath :: Ord Path
 derive instance ntPath :: Newtype Path _
-derive newtype instance isPath :: Decode Path
-derive newtype instance asPath :: Encode Path
+derive newtype instance isPath :: ReadForeign Path
+derive newtype instance asPath :: WriteForeign Path
 
-data GetIconsRequest = GetIconsRequest
-derive instance grGIR :: Generic GetIconsRequest _
-instance ifGIR :: Decode GetIconsRequest where
-  decode = genericDecode'
-instance afGIR :: Encode GetIconsRequest where
-  encode = genericEncode'
+newtype GetIconsRequest = GetIconsRequest
+  {}
+derive newtype instance ifGIR :: ReadForeign GetIconsRequest
+derive newtype instance afGIR :: WriteForeign GetIconsRequest
 
 newtype RemoveRequest = RemoveRequest
   { path :: Path
   }
-derive instance grRR :: Generic RemoveRequest _
-instance ifRR :: Decode RemoveRequest where
-  decode = genericDecode'
-instance afRR :: Encode RemoveRequest where
-  encode = genericEncode'
+derive newtype instance ifRR :: ReadForeign RemoveRequest
+derive newtype instance afRR :: WriteForeign RemoveRequest
 
 newtype OpenRequest = OpenRequest
   { path :: Path
   }
-derive instance grOR :: Generic OpenRequest _
-instance ifOR :: Decode OpenRequest where
-  decode = genericDecode'
-instance afOR :: Encode OpenRequest where
-  encode = genericEncode'
+derive newtype instance ifOR :: ReadForeign OpenRequest
+derive newtype instance afOR :: WriteForeign OpenRequest
 
 newtype FileData = FileData
   { path :: Path
   , watched :: Boolean
   }
-derive instance eqFD :: Eq FileData
-derive instance ordFD :: Ord FileData
-derive instance grFD :: Generic FileData _
-instance ifFD :: Decode FileData where
-  decode = genericDecode'
-instance afFD :: Encode FileData where
-  encode = genericEncode'
+derive newtype instance ifFD :: ReadForeign FileData
+derive newtype instance afFD :: WriteForeign FileData
 
 newtype WatchedData = WatchedData
   { path :: Path
@@ -71,16 +42,11 @@ newtype WatchedData = WatchedData
   }
 derive instance eqWD :: Eq WatchedData
 derive instance ordWD :: Ord WatchedData
-derive instance grWD :: Generic WatchedData _
-instance ifWD :: Decode WatchedData where
-  decode = genericDecode'
-instance afWD :: Encode WatchedData where
-  encode = genericEncode'
+derive newtype instance ifWD :: ReadForeign WatchedData
+derive newtype instance afWD :: WriteForeign WatchedData
 
 newtype Success = Success
-  { status :: String }
-derive instance grSC :: Generic Success _
-instance ifSC :: Decode Success where
-  decode = genericDecode'
-instance afSC :: Encode Success where
-  encode = genericEncode'
+  { status :: String
+  }
+derive newtype instance ifSC :: ReadForeign Success
+derive newtype instance afSC :: WriteForeign Success
