@@ -2,7 +2,7 @@ module FrontEnd where
 
 import Prelude
 
-import CSS (backgroundImage, borderColor, fromHexString, rgb, url)
+import CSS (backgroundImage, url)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
@@ -43,7 +43,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
-import Routes (Route(..), files, getIcons, open, remove, update, watched)
+import Routes (class GetHTTPMethod, Route, files, getHTTPMethod, getIcons, open, remove, update, watched)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
 
@@ -60,21 +60,22 @@ extractNameKinda (Path s)
 
 type VE a = V (NonEmptyList ForeignError) a
 
-request :: forall req res url m eff.
+request :: forall method req res url m eff.
   MonadAff
     ( ajax :: AJAX
     | eff
     )
     m
+  => GetHTTPMethod method
   => WriteForeign req
   => ReadForeign res
   => IsSymbol url
-  => Route req res url -> Maybe req -> m (VE res)
-request (Route route) body =
+  => Route method req res url -> Maybe req -> m (VE res)
+request route body =
   H.liftAff $ either invalid pure <$> parseResponse <$> action
   where
     action = AJ.affjax $ AJ.defaultRequest
-      { method = Left route.method
+      { method = Left (getHTTPMethod route)
       , url = reflectSymbol (SProxy :: SProxy url)
       , content = writeJSON <$> body
       }

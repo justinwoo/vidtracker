@@ -39,7 +39,7 @@ import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
-import Routes (Route(Route), files, getIcons, open, remove, update, watched)
+import Routes (class GetHTTPMethod, Route, files, getHTTPMethod, getIcons, open, remove, update, watched)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), OpenRequest(..), Path(..), RemoveRequest(..), Success(..))
@@ -128,10 +128,10 @@ main = launchAff $
         where
           bind = ibind
     respond' json = respond json
-    respondJSON' :: forall req res url
+    respondJSON' :: forall method req res url
       . IsSymbol url
       => WriteForeign res
-      => Route req res url
+      => Route method req res url
       -> res
       -> _
     respondJSON' _ = respondJSON <<< writeJSON
@@ -156,20 +156,21 @@ main = launchAff $
           matchStyles (Tuple _ u)
             | u == "/style.css" = true
             | otherwise = false
-          match :: forall req res url
+          match :: forall method req res url
             . IsSymbol url
+            => GetHTTPMethod method
             => Tuple (Either Method CustomMethod) String
-            -> Route req res url
+            -> Route method req res url
             -> Boolean
-          match (Tuple m u) (Route {method}) =
+          match (Tuple m u) route =
             case m of
-              Left m' -> m' == method && u == url
+              Left m' -> m' == (getHTTPMethod route) && u == url
               _ -> false
             where
               url = reflectSymbol (SProxy :: SProxy url)
-          withBody :: forall req res url
+          withBody :: forall method req res url
             . ReadForeign req
-            => Route req res url
+            => Route method req res url
             -> (req -> _)
             -> _
           withBody _ handler = do

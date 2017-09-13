@@ -4,27 +4,41 @@ import Data.Foreign (Foreign)
 import Data.HTTP.Method (Method(..))
 import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Success, WatchedData)
 
-newtype Route req res (url :: Symbol) = Route
-  { method :: Method
-  }
+foreign import kind RequestMethod
+foreign import data GetRequest :: RequestMethod
+foreign import data PostRequest :: RequestMethod
 
--- Unused params don't need to be decoded or encoded
+class GetHTTPMethod (method :: RequestMethod) where
+  getHTTPMethod :: forall req res url
+     . Route method req res url
+    -> Method
+
+instance ghmGR :: GetHTTPMethod GetRequest where
+  getHTTPMethod _ = GET
+
+instance ghmPR :: GetHTTPMethod PostRequest where
+  getHTTPMethod _ = POST
+
+data Route (method :: RequestMethod) req res (url :: Symbol) = Route
+
 type Unused = Foreign
+type GetRoute = Route GetRequest Unused
+type PostRoute = Route PostRequest
 
-files :: Route Unused (Array Path) "/api/files"
-files = Route {method: GET}
+files :: GetRoute (Array Path) "/api/files"
+files = Route
 
-watched :: Route Unused (Array WatchedData) "/api/watched"
-watched = Route {method: GET}
+watched :: GetRoute (Array WatchedData) "/api/watched"
+watched = Route
 
-open :: Route OpenRequest Success "/api/open"
-open = Route {method: POST}
+open :: PostRoute OpenRequest Success "/api/open"
+open = Route
 
-getIcons :: Route GetIconsRequest Success "/api/get-icons"
-getIcons = Route {method: POST}
+getIcons :: PostRoute GetIconsRequest Success "/api/get-icons"
+getIcons = Route
 
-update :: Route FileData (Array WatchedData) "/api/update"
-update = Route {method: POST}
+update :: PostRoute FileData (Array WatchedData) "/api/update"
+update = Route
 
-remove :: Route RemoveRequest Success "/api/remove"
-remove = Route {method: POST}
+remove :: PostRoute RemoveRequest Success "/api/remove"
+remove = Route
