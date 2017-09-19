@@ -43,6 +43,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
+import Network.HTTP.RequestHeader (RequestHeader(..))
 import Routes (class GetHTTPMethod, Route, files, getHTTPMethod, getIcons, open, remove, update, watched)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
@@ -78,6 +79,7 @@ request route body =
       { method = Left (getHTTPMethod route)
       , url = reflectSymbol (SProxy :: SProxy url)
       , content = writeJSON <$> body
+      , headers = [RequestHeader "Content-Type" "application/json"]
       }
     parseResponse response =
       runExcept $ readJSON response.response

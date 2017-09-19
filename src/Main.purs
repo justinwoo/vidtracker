@@ -2,47 +2,45 @@ module Main where
 
 import Prelude
 
-import Control.IxMonad (ibind, (:*>), (:>>=))
-import Control.Monad.Aff (Aff, Canceler, attempt, launchAff)
+import Control.Monad.Aff (Aff, attempt, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Except (runExcept)
 import Data.Array (filter, sortBy)
-import Data.Either (Either(..), either)
-import Data.HTTP.Method (CustomMethod, Method)
+import Data.Either (Either(Left, Right))
+import Data.Foreign (Foreign)
+import Data.Function.Uncurried (Fn3)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.String (Pattern(..), contains, length)
+import Data.String (Pattern(Pattern), contains)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), fst, snd)
-import Global.Unsafe (unsafeStringify)
-import Hyper.Middleware (lift')
-import Hyper.Middleware.Class (getConn)
-import Hyper.Node.FileServer (fileServer)
-import Hyper.Node.Server (defaultOptions, runServer)
-import Hyper.Request (getRequestData, readBody)
-import Hyper.Response (headers, respond, writeStatus)
-import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
 import Node.Buffer (BUFFER, Buffer, create, writeString)
 import Node.ChildProcess (CHILD_PROCESS, defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
+import Node.Express.App (App, listenHttp, use, useExternal)
+import Node.Express.App as E
+import Node.Express.Handler (HandlerM(HandlerM))
+import Node.Express.Middleware.Static (static)
+import Node.Express.Response (sendJson, setStatus)
+import Node.Express.Types (ExpressM, Request, Response)
 import Node.FS (FS)
-import Node.FS.Aff (mkdir, readTextFile, readdir, rename, stat)
+import Node.FS.Aff (mkdir, readdir, rename, stat)
 import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
-import Routes (class GetHTTPMethod, Route, files, getHTTPMethod, getIcons, open, remove, update, watched)
+import Routes (GetRoute, PostRoute, files, getIcons, open, remove, update, watched)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
-import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
+import Simple.JSON (class ReadForeign, class WriteForeign, read, write)
 import Types (FileData(..), OpenRequest(..), Path(..), RemoveRequest(..), Success(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 readdir' :: forall eff.
   String
@@ -74,7 +72,7 @@ getBuffer size json = do
   _ <- writeString UTF8 0 size json buffer
   pure buffer
 
-newtype Config = Config
+type Config =
   { db :: DBConnection
   , dir :: String
   }
@@ -88,7 +86,8 @@ type AppEffects eff =
   , http :: HTTP
   , fs :: FS
   , buffer :: BUFFER
-  | eff )
+  | eff
+  )
 
 ensureDB :: forall eff. FilePath -> Aff (db :: DBEffects | eff) DBConnection
 ensureDB path = do
@@ -96,131 +95,94 @@ ensureDB path = do
   _ <- queryDB db "CREATE TABLE IF NOT EXISTS watched (path varchar(20) primary key unique, created datetime);" []
   pure db
 
-main :: forall eff.
-  Eff (AppEffects (exception :: EXCEPTION | eff))
-    (Canceler (AppEffects eff))
-main = launchAff $
-  (liftEff $ lookupEnv "FILETRACKER_DIR") >>=
-  case _ of
+foreign import jsonBodyParser :: forall e. Fn3 Request Response (ExpressM e Unit) (ExpressM e Unit)
+
+foreign import _getBody :: Request -> Foreign
+
+getBody :: forall e. HandlerM e Foreign
+getBody = HandlerM \req _ _ -> pure $ _getBody req
+
+get :: forall res url
+   . IsSymbol url
+  => WriteForeign res
+  => GetRoute res url
+  -> Aff _ res
+  -> App _
+get _ handler = do
+  E.get route handler'
+  where
+    route = reflectSymbol (SProxy :: SProxy url)
+    handler' = sendJson =<< liftAff handler
+
+post :: forall req res url
+   . IsSymbol url
+  => ReadForeign req
+  => WriteForeign res
+  => PostRoute req res url
+  -> (req -> Aff _ res)
+  -> App _
+post _ handler = do
+  E.post route handler'
+  where
+    route = reflectSymbol (SProxy :: SProxy url)
+    handler' = do
+      body <- getBody
+      case runExcept (read body) of
+        Right (r :: req) ->
+          sendJson =<< (liftAff $ handler r)
+        Left e -> do
+          setStatus 400
+          sendJson $ write { error: show e}
+
+routes :: Config -> App _
+routes config = do
+  useExternal jsonBodyParser
+  get files $ handleFiles config
+  get watched $ handleWatched config
+  post getIcons handleGetIcons
+  post open $ handleOpen config
+  post update $ handleUpdate config
+  post remove $ handleRemove config
+  use $ static "dist"
+  where
+    handleFiles {dir} =
+      readdir' dir
+
+    handleWatched {db} = do
+      unsafeCoerce <$> queryDB db "SELECT path, created FROM watched;" []
+
+    handleOpen {dir} (OpenRequest or) = do
+      _ <- case platform of
+        Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+        _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
+      pure $ Success {status: "success"}
+
+    handleGetIcons _ = do
+      _ <- liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
+      pure $ Success {status: "success"}
+
+    handleUpdate config@{db} (FileData ur) = do
+      _ <- if ur.watched
+        then queryDB db "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
+        else queryDB db "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
+      handleWatched config
+
+    handleRemove {dir} (RemoveRequest rr) = do
+      let archive = concat [dir, "archive"]
+      let name = unwrap rr.path
+      let old = concat [dir, name]
+      let new = concat [archive, name]
+      _ <- attempt $ mkdir archive
+      _ <- attempt $ rename old new
+      pure $ Success {status: "success"}
+
+main :: Eff _ Unit
+main = void $ launchAff do
+  dir' <- liftEff $ lookupEnv "FILETRACKER_DIR"
+  case dir' of
     Nothing -> error "we done broke now!!!!"
     Just dir -> do
       db <- ensureDB $ concat [dir, "filetracker"]
-      let config = Config {db, dir}
-      liftEff $ runServer options config router
-  where
-    router = getConn :>>= handleConn
-    options = defaultOptions { onListening = onListening, onRequestError = onRequestError}
-    onListening port = log $ "listening on " <> (show $ unwrap port)
-    onRequestError error = log $ "error: " <> show error
-    notFound =
-      writeStatus statusNotFound
-      :*> headers []
-      :*> respond (Tuple "<h1>Not Found</h1>" UTF8)
-    respondJSON json =
-      writeStatus statusOK
-      :*> headers [Tuple "Content-Type" "application/json"]
-      :*> respond' json
-    respond' json
-      | size <- length json
-      , size > 16000 = do
-        buffer <- liftEff $ getBuffer size json
-        respond buffer
-        where
-          bind = ibind
-    respond' json = respond json
-    respondJSON' :: forall method req res url
-      . IsSymbol url
-      => WriteForeign res
-      => Route method req res url
-      -> res
-      -> _
-    respondJSON' _ = respondJSON <<< writeJSON
-    respondBadRequest e =
-      writeStatus statusBadRequest
-      :*> headers []
-      :*> respond ("bad JSON: " <> show e)
-    handleConn conn@{components: Config {dir, db}} = do
-      request <- getRequestData
-      case Tuple request.method request.url of
-        t
-          | match t files -> handleFiles files
-          | match t watched -> handleWatched watched
-          | match t getIcons -> handleGetIcons getIcons
-          | match t open -> handleOpen open
-          | match t update -> handleUpdate update
-          | match t remove -> handleRemove remove
-          | matchStyles t -> handleStyles
-          | otherwise -> fileServer "dist" notFound
-        where
-          bind = ibind
-          matchStyles (Tuple _ u)
-            | u == "/style.css" = true
-            | otherwise = false
-          match :: forall method req res url
-            . IsSymbol url
-            => GetHTTPMethod method
-            => Tuple (Either Method CustomMethod) String
-            -> Route method req res url
-            -> Boolean
-          match (Tuple m u) route =
-            case m of
-              Left m' -> m' == (getHTTPMethod route) && u == url
-              _ -> false
-            where
-              url = reflectSymbol (SProxy :: SProxy url)
-          withBody :: forall method req res url
-            . ReadForeign req
-            => Route method req res url
-            -> (req -> _)
-            -> _
-          withBody _ handler = do
-            body <- readBody
-            either
-              respondBadRequest
-              handler
-              (runExcept $ readJSON body)
+      void $ liftEff $ listenHttp (routes {db, dir}) 3000 \_ ->
+        log "Started server"
 
-          handleStyles = do
-            file <- liftAff $ attempt $ readTextFile UTF8 "./dist/style.css"
-            case file of
-              Right content -> do
-                writeStatus statusOK
-                :*> headers [Tuple "Content-Type" "text/css"]
-                :*> respond content
-              Left e -> do
-                notFound
-
-          handleFiles r = do
-            files <- lift' $ readdir' dir
-            respondJSON' r files
-
-          handleWatched r = do
-            rows <- queryDB' "SELECT path, created FROM watched;" []
-            respondJSON $ unsafeStringify rows
-
-          handleOpen r = withBody r \(OpenRequest or) -> do
-            _ <- case platform of
-              Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
-              _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
-            respondJSON' r $ Success {status: "success"}
-
-          handleGetIcons r = withBody r \_ -> do
-            _ <- liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
-            respondJSON' r $ Success {status: "success"}
-
-          handleUpdate r = withBody r \(FileData ur) -> do
-            _ <- if ur.watched
-              then queryDB' "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
-              else queryDB' "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
-            handleWatched watched
-
-          handleRemove r = withBody r \(RemoveRequest rr) -> do
-            let archive = concat [dir, "archive"]
-            let name = unwrap rr.path
-            let old = concat [dir, name]
-            let new = concat [archive, name]
-            _ <- lift' <<< attempt $ mkdir archive
-            _ <- lift' <<< attempt $ rename old new
-            respondJSON' r $ Success {status: "success"}
-
-          queryDB' query params = lift' $ queryDB db query params

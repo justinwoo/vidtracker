@@ -18,7 +18,6 @@ import Data.Set (Set, fromFoldable, member)
 import Data.Traversable (for_)
 import Data.Tuple (Tuple(..))
 import FrontEnd (extractNameKinda)
-import Global (encodeURIComponent)
 import Global.Unsafe (unsafeStringify)
 import LenientHtmlParser (Attribute(..), Name(..), Tag(..), TagName(..), Value(..), parseTags)
 import Network.HTTP.Affjax (get)
@@ -55,19 +54,18 @@ curl url path = do
 
 downloadIconIfNotExist :: Config -> Set String -> String -> Aff _ Unit
 downloadIconIfNotExist config existing name =
-  unless (member name' existing) do
+  unless (member name existing) do
     log $ "gonna get " <> name
     html <- _.response <$> get (config.queryUrl <> name)
     case extractFirstImage =<<
       (lmap (append "couldn't get tags " <<< show) (parseTags html)) of
       Right url -> do
         log $ "downloading from " <> url
-        curl url (iconsPath <> "/" <> name')
+        curl url (iconsPath <> "/" <> name)
         pure unit
       Left e ->
         error e
   where
-    name' = encodeURIComponent name
     matchSrc (Attribute (Name name) _) = name == "src"
     extractFirstImage tags =
       case tags of
