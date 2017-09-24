@@ -1,0 +1,24 @@
+{
+    "name": "vidtracker",
+    "set": "more-packages-hodgepodge",
+    "source": "https://github.com/justinwoo/package-sets.git",
+    "depends": [
+        "halogen-css",
+        "now",
+        "numbers",
+        "echarts",
+        "lenient-html-parser",
+        "css",
+        "node-child-process",
+        "node-fs-aff",
+        "simple-json",
+        "express",
+        "halogen",
+        "validation",
+        "affjax",
+        "node-sqlite3",
+        "node-process",
+        "console",
+        "prelude"
+    ]
+}
