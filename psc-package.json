@@ -1,7 +1,7 @@
 {
     "name": "vidtracker",
-    "set": "more-packages-hodgepodge",
-    "source": "https://github.com/justinwoo/package-sets.git",
+    "set": "master",
+    "source": "https://github.com/purescript/package-sets.git",
     "depends": [
         "halogen-css",
         "now",
