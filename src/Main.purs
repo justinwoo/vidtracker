@@ -4,13 +4,12 @@ import Prelude
 
 import Control.Monad.Aff (Aff, attempt, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (liftAff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Except (runExcept)
-import Control.Monad.IO (IO, runIO')
 import Data.Array (filter, sortBy)
 import Data.Either (Either(Left, Right))
 import Data.Foreign (Foreign)
@@ -93,13 +92,17 @@ type AppEffects eff =
 class GetFiles m where
   getFiles :: Config -> m (Array Path)
 
-instance gfA :: GetFiles IO where
+instance gfAF ::
+  ( MonadAff (fs :: FS | trash) (Aff e)
+  ) => GetFiles (Aff e) where
   getFiles {dir} = liftAff $ readdir' dir
 
 class GetWatched m where
   getWatchedData :: Config -> m (Array WatchedData)
 
-instance gwA :: GetWatched IO where
+instance gwA ::
+  ( MonadAff (db :: DBEffects | trash) (Aff e)
+  ) => GetWatched (Aff e) where
   getWatchedData {db} = do
     watchedData :: Array WatchedData <- liftAff $ unsafeCoerce <$>
       queryDB db "SELECT path, created FROM watched;" []
@@ -108,15 +111,19 @@ instance gwA :: GetWatched IO where
 class GetIcons m where
   getIconsData :: Config -> GetIconsRequest -> m Success
 
-instance giA :: GetIcons IO where
+instance giA ::
+  ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
+  ) => GetIcons (Aff e) where
   getIconsData {db} _ = do
-    _ <- liftEff $ void $ spawn "node" ["get-icons.js"] defaultSpawnOptions
+    _ <- liftAff <<< liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
     pure $ Success {status: "ok"}
 
 class UpdateWatched m where
   updateWatched :: Config -> FileData -> m (Array WatchedData)
 
-instance uwA :: UpdateWatched IO where
+instance uwA ::
+  ( MonadAff (db :: DBEffects | trash) (Aff e)
+  ) => UpdateWatched (Aff e) where
   updateWatched config@{db} (FileData ur) = do
     _ <- liftAff $ if ur.watched
       then queryDB db "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
@@ -126,7 +133,9 @@ instance uwA :: UpdateWatched IO where
 class OpenFile m where
   openFile :: Config -> OpenRequest -> m (Success)
 
-instance ofA :: OpenFile IO where
+instance ofA ::
+  ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
+  ) => OpenFile (Aff e) where
   openFile {dir} (OpenRequest or) = do
     _ <- liftAff $ case platform of
           Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
@@ -136,7 +145,9 @@ instance ofA :: OpenFile IO where
 class RemoveFile m where
   removeFile :: Config -> RemoveRequest -> m (Success)
 
-instance rfA :: RemoveFile IO where
+instance rfA ::
+  ( MonadAff (fs :: FS | trash) (Aff e)
+  ) => RemoveFile (Aff e) where
   removeFile {dir} (RemoveRequest rr) = do
     let archive = concat [dir, "archive"]
     let name = unwrap rr.path
@@ -165,14 +176,14 @@ handleGet :: forall res url
   => WriteForeign res
   => Config
   -> GetRoute res url
-  -> (Config -> IO res)
+  -> (Config -> Aff _ res)
   -> AppM _ Unit
 handleGet config route action =
   E.get route handler'
   where
     route = reflectSymbol (SProxy :: SProxy url)
     handler' = do
-      response <- liftAff <<< runIO' $ action config
+      response <- liftAff $ action config
       sendJson $ write response
 
 handlePost :: forall req res url
@@ -181,7 +192,7 @@ handlePost :: forall req res url
   => ReadForeign req
   => Config
   -> PostRoute req res url
-  -> (Config -> req -> IO res)
+  -> (Config -> req -> Aff _ res)
   -> AppM _ Unit
 handlePost config route action =
   E.post route handler'
@@ -191,7 +202,7 @@ handlePost config route action =
       body <- getBody
       case runExcept (read body) of
         Right (r :: req) -> do
-          response <- liftAff <<< runIO' $ action config r
+          response <- liftAff $ action config r
           sendJson $ write response
         Left e -> do
           setStatus 400
@@ -212,7 +223,7 @@ routes config = do
        . IsSymbol url
       => WriteForeign res
       => GetRoute res url
-      -> (Config -> IO res)
+      -> (Config -> Aff _ res)
       -> AppM _ Unit
     get = handleGet config
 
@@ -221,7 +232,7 @@ routes config = do
       => WriteForeign res
       => ReadForeign req
       => PostRoute req res url
-      -> (Config -> req -> IO res)
+      -> (Config -> req -> Aff _ res)
       -> AppM _ Unit
     post = handlePost config
 
