@@ -13,7 +13,6 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
-import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
 import DOM (DOM)
 import Data.Array (drop, filter, head, reverse, sort, sortWith)
@@ -81,8 +80,7 @@ request route body =
       , content = writeJSON <$> body
       , headers = [RequestHeader "Content-Type" "application/json"]
       }
-    parseResponse response =
-      runExcept $ readJSON response.response
+    parseResponse response = readJSON response.response
 
 unV' :: forall e a m.
   MonadAff

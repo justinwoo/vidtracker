@@ -6,13 +6,11 @@ import Control.Monad.Aff (Aff, attempt, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Console (error)
-import Control.Monad.Eff (Eff)
+import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Except (runExcept)
-import Control.Monad.Free (Free, foldFree, liftF)
-import Control.Monad.Reader (ReaderT, ask, runReaderT)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.IO (IO, runIO')
 import Data.Array (filter, sortBy)
 import Data.Either (Either(Left, Right))
 import Data.Foreign (Foreign)
@@ -92,57 +90,62 @@ type AppEffects eff =
   | eff
   )
 
-data CommandsF next
-  = GetFiles (Array Path -> next)
-  | GetWatched (Array WatchedData -> next)
-  | GetIcons GetIconsRequest (Success -> next)
-  | UpdateWatched FileData (Array WatchedData -> next)
-  | OpenFile OpenRequest (Success -> next)
-  | RemoveFile RemoveRequest (Success -> next)
-  | ReturnSuccess (Success -> next)
-derive instance fCF :: Functor CommandsF
+class GetFiles m where
+  getFiles :: Config -> m (Array Path)
 
-interpret :: Config -> Free CommandsF ~> HandlerM _
-interpret config free = do
-  liftAff $ runReaderT (foldFree evalCommand free) config
+instance gfA :: GetFiles IO where
+  getFiles {dir} = liftAff $ readdir' dir
 
-evalCommand :: CommandsF ~> ReaderT Config (Aff _)
-evalCommand (GetFiles f) = do
-  {dir} <- ask
-  files <- lift (readdir' dir)
-  pure $ f files
-evalCommand (GetWatched f) = do
-  {db} <- ask
-  watchedData :: Array WatchedData <- lift $ unsafeCoerce <$>
-    queryDB db "SELECT path, created FROM watched;" []
-  pure $ f watchedData
-evalCommand (GetIcons _ f) = do
-  _ <- liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
-  evalCommand (ReturnSuccess f)
-evalCommand (ReturnSuccess f) = do
-  pure <<< f $ Success {status: "success"}
-evalCommand (UpdateWatched (FileData ur) f) = do
-  {db} <- ask
-  _ <- lift $ if ur.watched
-    then queryDB db "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
-    else queryDB db "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
-  evalCommand (GetWatched f)
-evalCommand (OpenFile (OpenRequest or) f) = do
-  {dir} <- ask
-  _ <- lift $ case platform of
-        Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
-        _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
-  evalCommand (ReturnSuccess f)
-evalCommand (RemoveFile (RemoveRequest rr) f) = do
-  {dir} <- ask
-  let archive = concat [dir, "archive"]
-  let name = unwrap rr.path
-  let old = concat [dir, name]
-  let new = concat [archive, name]
-  _ <- liftAff do
-    void $ attempt $ mkdir archive
-    void $ attempt $ rename old new
-  evalCommand (ReturnSuccess f)
+class GetWatched m where
+  getWatchedData :: Config -> m (Array WatchedData)
+
+instance gwA :: GetWatched IO where
+  getWatchedData {db} = do
+    watchedData :: Array WatchedData <- liftAff $ unsafeCoerce <$>
+      queryDB db "SELECT path, created FROM watched;" []
+    pure $ watchedData
+
+class GetIcons m where
+  getIconsData :: Config -> GetIconsRequest -> m Success
+
+instance giA :: GetIcons IO where
+  getIconsData {db} _ = do
+    _ <- liftEff $ void $ spawn "node" ["get-icons.js"] defaultSpawnOptions
+    pure $ Success {status: "ok"}
+
+class UpdateWatched m where
+  updateWatched :: Config -> FileData -> m (Array WatchedData)
+
+instance uwA :: UpdateWatched IO where
+  updateWatched config@{db} (FileData ur) = do
+    _ <- liftAff $ if ur.watched
+      then queryDB db "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
+      else queryDB db "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
+    getWatchedData config
+
+class OpenFile m where
+  openFile :: Config -> OpenRequest -> m (Success)
+
+instance ofA :: OpenFile IO where
+  openFile {dir} (OpenRequest or) = do
+    _ <- liftAff $ case platform of
+          Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+          _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
+    pure $ Success {status: "ok"}
+
+class RemoveFile m where
+  removeFile :: Config -> RemoveRequest -> m (Success)
+
+instance rfA :: RemoveFile IO where
+  removeFile {dir} (RemoveRequest rr) = do
+    let archive = concat [dir, "archive"]
+    let name = unwrap rr.path
+    let old = concat [dir, name]
+    let new = concat [archive, name]
+    _ <- liftAff $ do
+      void $ attempt $ mkdir archive
+      void $ attempt $ rename old new
+    pure $ Success {status: "ok"}
 
 ensureDB :: forall eff. FilePath -> Aff (db :: DBEffects | eff) DBConnection
 ensureDB path = do
@@ -157,32 +160,30 @@ foreign import _getBody :: Request -> Foreign
 getBody :: forall e. HandlerM e Foreign
 getBody = HandlerM \req _ _ -> pure $ _getBody req
 
-handleGet :: forall f next res url
-   . Category f
-  => IsSymbol url
+handleGet :: forall res url
+    . IsSymbol url
   => WriteForeign res
   => Config
   -> GetRoute res url
-  -> (f next next -> CommandsF res)
+  -> (Config -> IO res)
   -> AppM _ Unit
-handleGet config route command =
+handleGet config route action =
   E.get route handler'
   where
     route = reflectSymbol (SProxy :: SProxy url)
     handler' = do
-      response <- interpret config $ liftF (command id)
+      response <- liftAff <<< runIO' $ action config
       sendJson $ write response
 
-handlePost :: forall f next req res url
-   . Category f
-  => IsSymbol url
-  => ReadForeign req
+handlePost :: forall req res url
+    . IsSymbol url
   => WriteForeign res
+  => ReadForeign req
   => Config
   -> PostRoute req res url
-  -> (req -> f next next -> CommandsF res)
+  -> (Config -> req -> IO res)
   -> AppM _ Unit
-handlePost config route command =
+handlePost config route action =
   E.post route handler'
   where
     route = reflectSymbol (SProxy :: SProxy url)
@@ -190,7 +191,7 @@ handlePost config route command =
       body <- getBody
       case runExcept (read body) of
         Right (r :: req) -> do
-          response <- interpret config $ liftF (command r id)
+          response <- liftAff <<< runIO' $ action config r
           sendJson $ write response
         Left e -> do
           setStatus 400
@@ -199,29 +200,28 @@ handlePost config route command =
 routes :: Config -> App _
 routes config = do
   useExternal jsonBodyParser
-  get files GetFiles
-  get watched GetWatched
-  post getIcons GetIcons
-  post update UpdateWatched
-  post open OpenFile
-  post remove RemoveFile
+  get files getFiles
+  get watched getWatchedData
+  post getIcons getIconsData
+  post update updateWatched
+  post open openFile
+  post remove removeFile
   use $ static "dist"
   where
-    get :: forall f next res url
-       . Category f
-      => IsSymbol url
+    get :: forall res url
+       . IsSymbol url
       => WriteForeign res
       => GetRoute res url
-      -> (f next next -> CommandsF res)
+      -> (Config -> IO res)
       -> AppM _ Unit
     get = handleGet config
-    post :: forall f next req res url
-       . Category f
-      => IsSymbol url
-      => ReadForeign req
+
+    post :: forall req res url
+       . IsSymbol url
       => WriteForeign res
+      => ReadForeign req
       => PostRoute req res url
-      -> (req -> f next next -> CommandsF res)
+      -> (Config -> req -> IO res)
       -> AppM _ Unit
     post = handlePost config
 

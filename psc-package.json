@@ -1,8 +1,10 @@
 {
     "name": "vidtracker",
-    "set": "master",
-    "source": "https://github.com/purescript/package-sets.git",
+    "set": "with-io-pre-aff-4",
+    "source": "https://github.com/justinwoo/package-sets.git",
     "depends": [
+        "io",
+        "aff",
         "halogen-css",
         "now",
         "numbers",

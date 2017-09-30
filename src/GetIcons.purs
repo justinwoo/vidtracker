@@ -8,7 +8,6 @@ import Control.Monad.Aff.Console (error, log)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exc
-import Control.Monad.Except (runExcept)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
 import Data.List (find, (:))
@@ -33,9 +32,7 @@ type Config =
   }
 
 readConfig :: Aff _ (Either _ Config)
-readConfig = do
-  contents <- readTextFile UTF8 "./icons-config.json"
-  pure $ runExcept $ readJSON contents
+readConfig = readJSON <$> readTextFile UTF8 "./icons-config.json"
 
 iconsPath :: String
 iconsPath = "./dist/icons"
