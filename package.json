@@ -20,16 +20,16 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "body-parser": "^1.18.1",
-    "echarts": "^3.7.1",
-    "express": "^4.15.4",
+    "body-parser": "^1.18.2",
+    "echarts": "3.7.2",
+    "express": "^4.16.2",
     "open": "^0.0.5",
     "rimraf": "^2.6.2",
-    "sqlite3": "^3.1.11",
+    "sqlite3": "^3.1.13",
     "xhr2": "^0.1.4"
   },
   "devDependencies": {
     "concurrently": "^3.5.0",
-    "webpack": "^3.6.0"
+    "webpack": "^3.8.1"
   }
 }
