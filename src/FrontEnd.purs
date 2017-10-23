@@ -18,6 +18,7 @@ import DOM (DOM)
 import Data.Array (drop, filter, head, reverse, sort, sortWith)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
+import Data.HTTP.Method (Method(..))
 import Data.JSDate as JSDate
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
@@ -43,7 +44,7 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Routes (class GetHTTPMethod, Route, files, getHTTPMethod, getIcons, open, remove, update, watched)
+import Routes (GetRoute, PostRoute, files, getIcons, open, remove, update, watched)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
 
@@ -60,24 +61,43 @@ extractNameKinda (Path s)
 
 type VE a = V (NonEmptyList ForeignError) a
 
-request :: forall method req res url m eff.
+get :: forall res url m eff.
   MonadAff
     ( ajax :: AJAX
     | eff
     )
     m
-  => GetHTTPMethod method
-  => WriteForeign req
   => ReadForeign res
   => IsSymbol url
-  => Route method req res url -> Maybe req -> m (VE res)
-request route body =
+  => GetRoute res url -> m (VE res)
+get _ =
   H.liftAff $ either invalid pure <$> parseResponse <$> action
   where
     action = AJ.affjax $ AJ.defaultRequest
-      { method = Left (getHTTPMethod route)
+      { method = Left GET
       , url = reflectSymbol (SProxy :: SProxy url)
-      , content = writeJSON <$> body
+      , headers = [RequestHeader "Content-Type" "application/json"]
+      }
+    parseResponse response = readJSON response.response
+
+
+post :: forall method req res url m eff.
+  MonadAff
+    ( ajax :: AJAX
+    | eff
+    )
+    m
+  => WriteForeign req
+  => ReadForeign res
+  => IsSymbol url
+  => PostRoute req res url -> req -> m (VE res)
+post _ body =
+  H.liftAff $ either invalid pure <$> parseResponse <$> action
+  where
+    action = AJ.affjax $ AJ.defaultRequest
+      { method = Left POST
+      , url = reflectSymbol (SProxy :: SProxy url)
+      , content = pure $ writeJSON body
       , headers = [RequestHeader "Content-Type" "application/json"]
       }
     parseResponse response = readJSON response.response
@@ -341,20 +361,20 @@ ui =
       pure next
       where
         getResult = do
-          files <- request files Nothing
-          watched <- request watched Nothing
+          files <- get files
+          watched <- get watched
           pure $ Tuple <$> files <*> watched
 
     eval (GetIcons next) = do
-      _ <- request getIcons $ Just (GetIconsRequest {})
+      _ <- post getIcons $ GetIconsRequest {}
       pure next
 
     eval (OpenFile path next) = do
-      _ <- request open $ Just (OpenRequest {path})
+      _ <- post open $ OpenRequest {path}
       pure next
 
     eval (SetWatched path flag next) = do
-      request update (Just $ FileData {path, watched: flag})
+      post update (FileData {path, watched: flag})
         >>= unV' \w -> H.modify _ {watched = w}
       pure next
 
@@ -390,7 +410,7 @@ ui =
       pure next
 
     eval (Delete path next) = do
-      _ <- request remove $  Just (RemoveRequest {path})
+      _ <- post remove $ RemoveRequest {path}
       eval (FetchData next)
 
 main :: forall e.

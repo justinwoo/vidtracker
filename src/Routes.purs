@@ -1,6 +1,7 @@
 module Routes where
 
-import Data.Foreign (Foreign)
+import Prelude
+
 import Data.HTTP.Method (Method(..))
 import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Success, WatchedData)
 
@@ -21,8 +22,7 @@ instance ghmPR :: GetHTTPMethod PostRequest where
 
 data Route (method :: RequestMethod) req res (url :: Symbol) = Route
 
-type Unused = Foreign
-type GetRoute = Route GetRequest Unused
+type GetRoute = Route GetRequest Void
 type PostRoute = Route PostRequest
 
 files :: GetRoute (Array Path) "/api/files"
