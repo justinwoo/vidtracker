@@ -45,9 +45,10 @@ curl :: forall e.
       Unit
 curl url path = do
   cp <- liftEff $ spawn "curl" [url, "-o", path] defaultSpawnOptions
-  makeAff \e s -> do
-    onError cp (e <<< Exc.error <<< unsafeStringify)
-    onClose cp (s <<< const unit)
+  makeAff \cb -> do
+    onError cp (cb <<< Left <<< Exc.error <<< unsafeStringify)
+    onClose cp (cb <<< Right <<< const unit)
+    pure mempty
 
 downloadIconIfNotExist :: Config -> Set String -> String -> Aff _ Unit
 downloadIconIfNotExist config existing name =

@@ -1,6 +1,6 @@
 {
     "name": "vidtracker",
-    "set": "with-io-pre-aff-4",
+    "set": "aff-4.0-27-Oct-2017",
     "source": "https://github.com/justinwoo/package-sets.git",
     "depends": [
         "io",
