@@ -15,7 +15,8 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.MonadPlus (guard)
 import DOM (DOM)
-import Data.Array (drop, filter, head, reverse, sort, sortWith)
+import Data.Array (drop, filter, fromFoldable, head, reverse, sort, sortWith)
+import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
 import Data.HTTP.Method (Method(..))
@@ -47,17 +48,22 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import Routes (GetRoute, PostRoute, files, getIcons, open, remove, update, watched)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
+import Text.Parsing.StringParser (runParser)
+import Text.Parsing.StringParser.Combinators (many1Till)
+import Text.Parsing.StringParser.String (anyChar, satisfy, string)
 
 reverse' :: String -> String
 reverse' = fromCharArray <<< reverse <<< toCharArray
 
+-- [HorribleSubs] BlahTastic - 01 [720p].mkv
+-- [HorribleSubs] Blah BlahTastic - Whatever 01 [720p].mkv
+-- [HorribleSubs] Blah Blah BlahTastic - Legend of Blah.mkv
 extractNameKinda :: Path -> Either String String
-extractNameKinda (Path s)
-  | [_, a] <- split (Pattern "] ") s
-  , result <- split (Pattern " - ") (reverse' a)
-  , Just b <- head $ drop 1 result
-  , c <- replace (Pattern ".") (Replacement "") b = Right (reverse' c)
-  | otherwise = Left "didn't match expected patterns"
+extractNameKinda (Path s) =
+  bimap show (fromCharArray <<< fromFoldable) <<< flip runParser s $ do
+    _ <- many1Till anyChar (string "] ")
+    title <- many1Till (satisfy $ \c -> c /= '.') (string " - ")
+    pure title
 
 type VE a = V (NonEmptyList ForeignError) a
 
