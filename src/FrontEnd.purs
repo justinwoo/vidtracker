@@ -15,18 +15,19 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.MonadPlus (guard)
 import DOM (DOM)
-import Data.Array (drop, filter, fromFoldable, head, reverse, sort, sortWith)
+import Data.Array (filter, fromFoldable, reverse, sort, sortWith)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError)
 import Data.HTTP.Method (Method(..))
 import Data.JSDate as JSDate
+import Data.List (List)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.Set (Set, insert, member)
-import Data.String (Pattern(Pattern), Replacement(..), contains, fromCharArray, replace, split, toCharArray, toLower)
+import Data.String (Pattern(Pattern), contains, fromCharArray, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
@@ -47,23 +48,32 @@ import Network.HTTP.Affjax as AJ
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Routes (GetRoute, PostRoute, files, getIcons, open, remove, update, watched)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
-import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
-import Text.Parsing.StringParser (runParser)
+import Text.Parsing.StringParser (Parser, runParser, try)
 import Text.Parsing.StringParser.Combinators (many1Till)
-import Text.Parsing.StringParser.String (anyChar, satisfy, string)
+import Text.Parsing.StringParser.String (anyChar, anyDigit, char, string)
+import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
 
-reverse' :: String -> String
-reverse' = fromCharArray <<< reverse <<< toCharArray
+nameParser :: Parser (List Char)
+nameParser = do
+    thingInBrackets
+    _ <- char ' '
+    title <- many1Till anyChar endSequence
+    pure title
+  where
+    thingInBrackets = do
+      _ <- char '['
+      _ <- many1Till anyChar (char ']')
+      pure unit
+    endSequence = try do
+      _ <- string " - "
+      _ <- many1Till anyDigit (char ' ')
+      thingInBrackets
+      _ <- char '.'
+      pure unit
 
--- [HorribleSubs] BlahTastic - 01 [720p].mkv
--- [HorribleSubs] Blah BlahTastic - Whatever 01 [720p].mkv
--- [HorribleSubs] Blah Blah BlahTastic - Legend of Blah.mkv
 extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s) =
-  bimap show (fromCharArray <<< fromFoldable) <<< flip runParser s $ do
-    _ <- many1Till anyChar (string "] ")
-    title <- many1Till (satisfy $ \c -> c /= '.') (string " - ")
-    pure title
+  bimap show (fromCharArray <<< fromFoldable) $ runParser nameParser s
 
 type VE a = V (NonEmptyList ForeignError) a
 
