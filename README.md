@@ -1,5 +1,7 @@
 # vidtracker
 
+[![Build Status](https://travis-ci.org/justinwoo/vidtracker.svg?branch=master)](https://travis-ci.org/justinwoo/vidtracker)
+
 blog post about this [here](http://qiita.com/kimagure/items/b576b5bfe370180599f8)
 
 a simple application written with [Hyper](https://github.com/owickstrom/hyper) to keep track of videos watched and make opening them easier
