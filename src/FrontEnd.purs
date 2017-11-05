@@ -73,7 +73,12 @@ nameParser = do
 
 extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s) =
-  bimap show (fromCharArray <<< fromFoldable) $ runParser nameParser s
+  bimap show (fromCharArray <<< filter' <<< fromFoldable) $ runParser nameParser s
+  where
+    filter' =
+      (=<<) case _ of
+        '.' -> mempty
+        x -> pure x
 
 type VE a = V (NonEmptyList ForeignError) a
 
