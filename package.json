@@ -8,14 +8,11 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:get-icons": "pulp --psc-package build --main GetIcons --to get-icons.js",
-    "build:be": "pulp --psc-package build --to index.js",
-    "build:fe": "pulp --psc-package browserify -O -m FrontEnd --to dist/index.js",
-    "build:generate-css": "pulp --psc-package run -m GenerateStylesheet",
-    "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css",
-    "watch:build": "pulp --psc-package -w build",
-    "watch:fe": "webpack -w",
-    "start": "concurrently --kill-others \"npm run watch:fe\" \"npm run watch:build\""
+    "build:get-icons": "pulp build --main GetIcons --to get-icons.js",
+    "build:be": "pulp build --to index.js",
+    "build:fe": "pulp build -O -m FrontEnd --to dist/frontend-prebundle.js && webpack -p",
+    "build:generate-css": "pulp run -m GenerateStylesheet",
+    "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
   "author": "",
   "license": "MIT",
@@ -24,6 +21,7 @@
     "echarts": "3.7.2",
     "express": "^4.16.2",
     "open": "^0.0.5",
+    "prettier": "^1.8.1",
     "rimraf": "^2.6.2",
     "sqlite3": "^3.1.13",
     "xhr2": "^0.1.4"
