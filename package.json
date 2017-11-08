@@ -10,7 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:get-icons": "pulp --psc-package build --main GetIcons --to get-icons.js",
     "build:be": "pulp --psc-package build --to index.js",
-    "build:fe": "pulp --psc-package browserify -m FrontEnd --to dist/index.js",
+    "build:fe": "pulp --psc-package browserify -O -m FrontEnd --to dist/index.js",
     "build:generate-css": "pulp --psc-package run -m GenerateStylesheet",
     "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css",
     "watch:build": "pulp --psc-package -w build",
