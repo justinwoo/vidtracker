@@ -6,6 +6,7 @@
 /.psc*
 /.psa*
 /dist/index.js
+/dist/frontend-prebundle.js
 index.js
 /dist/icons
 icons-config.json
