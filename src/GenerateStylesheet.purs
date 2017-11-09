@@ -16,7 +16,7 @@ main :: Eff _ _
 main = launchAff do
   case renderedSheet stylesheet of
     Just result
-      | formatted <- format (defaultOptions {parser = PostCSS}) result -> do
+      | formatted <- format (defaultOptions {parser = CSS}) result -> do
       writeTextFile UTF8 "./dist/style.css" formatted
       log "rendered stylesheet"
     Nothing -> do

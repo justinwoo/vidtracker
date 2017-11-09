@@ -1,6 +1,6 @@
 {
     "name": "vidtracker",
-    "set": "aff-4.0-27-Oct-2017",
+    "set": "samosa",
     "source": "https://github.com/justinwoo/package-sets.git",
     "depends": [
         "prettier",
