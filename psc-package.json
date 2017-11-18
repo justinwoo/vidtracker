@@ -1,6 +1,6 @@
 {
     "name": "vidtracker",
-    "set": "samosa",
+    "set": "gravlax",
     "source": "https://github.com/justinwoo/package-sets.git",
     "depends": [
         "prettier",
