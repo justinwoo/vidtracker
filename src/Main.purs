@@ -256,7 +256,7 @@ instance registerHandlerGet ::
          (Aff (express :: EXPRESS | e) res)
          (AppM (express :: EXPRESS | e)) where
   registerHandlerImpl route handler =
-    E.post route' handler'
+    E.get route' handler'
     where
       route' = reflectSymbol (SProxy :: SProxy url)
       handler' = do
