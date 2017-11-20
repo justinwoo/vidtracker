@@ -25,20 +25,19 @@ data Route (method :: RequestMethod) req res (url :: Symbol) = Route
 type GetRoute = Route GetRequest Void
 type PostRoute = Route PostRequest
 
-files :: GetRoute (Array Path) "/api/files"
-files = Route
-
-watched :: GetRoute (Array WatchedData) "/api/watched"
-watched = Route
-
-open :: PostRoute OpenRequest Success "/api/open"
-open = Route
-
-getIcons :: PostRoute GetIconsRequest Success "/api/get-icons"
-getIcons = Route
-
-update :: PostRoute FileData (Array WatchedData) "/api/update"
-update = Route
-
-remove :: PostRoute RemoveRequest Success "/api/remove"
-remove = Route
+apiRoutes ::
+  { files :: GetRoute (Array Path) "/api/files"
+  , watched :: GetRoute (Array WatchedData) "/api/watched"
+  , getIcons :: PostRoute GetIconsRequest Success "/api/get-icons"
+  , update :: PostRoute FileData (Array WatchedData) "/api/update"
+  , open :: PostRoute OpenRequest Success "/api/open"
+  , remove :: PostRoute RemoveRequest Success "/api/remove"
+  }
+apiRoutes =
+  { files: Route
+  , watched: Route
+  , getIcons: Route
+  , update: Route
+  , open: Route
+  , remove: Route
+  }

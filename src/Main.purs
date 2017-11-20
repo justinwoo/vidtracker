@@ -16,6 +16,7 @@ import Data.Foreign (Foreign)
 import Data.Function.Uncurried (Fn3)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.Record (get)
 import Data.String (Pattern(Pattern), contains)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (traverse)
@@ -28,7 +29,7 @@ import Node.Express.App as E
 import Node.Express.Handler (HandlerM(HandlerM))
 import Node.Express.Middleware.Static (static)
 import Node.Express.Response (sendJson, setStatus)
-import Node.Express.Types (ExpressM, Request, Response)
+import Node.Express.Types (EXPRESS, ExpressM, Request, Response)
 import Node.FS (FS)
 import Node.FS.Aff (mkdir, readdir, rename, stat)
 import Node.FS.Stats (modifiedTime)
@@ -36,9 +37,11 @@ import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (PROCESS, lookupEnv, platform)
-import Routes (GetRoute, PostRoute, files, getIcons, open, remove, update, watched)
+import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, write)
+import Type.Prelude (class RowToList, RLProxy(..))
+import Type.Row (Cons, Nil, kind RowList)
 import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Success(Success), WatchedData)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -171,72 +174,127 @@ foreign import _getBody :: Request -> Foreign
 getBody :: forall e. HandlerM e Foreign
 getBody = HandlerM \req _ _ -> pure $ _getBody req
 
-handleGet :: forall res url
-    . IsSymbol url
-  => WriteForeign res
-  => Config
-  -> GetRoute res url
-  -> (Config -> Aff _ res)
-  -> AppM _ Unit
-handleGet config route action =
-  E.get route handler'
-  where
-    route = reflectSymbol (SProxy :: SProxy url)
-    handler' = do
-      response <- liftAff $ action config
-      sendJson $ write response
+registerRoutes :: forall proxy routes handlers routesL handlersL m
+   . RowToList routes routesL
+  => RowToList handlers handlersL
+  => Monad m
+  => RoutesHandlers routesL handlersL routes handlers m
+  => Record routes
+  -> Record handlers
+  -> m Unit
+registerRoutes routes handlers =
+  registerRoutesImpl
+    (RLProxy :: RLProxy routesL)
+    (RLProxy :: RLProxy handlersL)
+    routes
+    handlers
 
-handlePost :: forall req res url
-    . IsSymbol url
-  => WriteForeign res
-  => ReadForeign req
-  => Config
-  -> PostRoute req res url
-  -> (Config -> req -> Aff _ res)
-  -> AppM _ Unit
-handlePost config route action =
-  E.post route handler'
+class RoutesHandlers
+  (routesL :: RowList)
+  (handlersL :: RowList)
+  (routes :: # Type)
+  (handlers :: # Type)
+  m
+  | routesL -> handlersL handlers m
   where
-    route = reflectSymbol (SProxy :: SProxy url)
-    handler' = do
-      body <- getBody
-      case runExcept (read body) of
-        Right (r :: req) -> do
-          response <- liftAff $ action config r
-          sendJson $ write response
-        Left e -> do
-          setStatus 400
-          sendJson $ write {error: show e}
+    registerRoutesImpl :: forall proxy
+       . Monad m
+      => proxy routesL
+      -> proxy handlersL
+      -> Record routes
+      -> Record handlers
+      -> m Unit
 
-routes :: Config -> App _
+instance routesHandlersNil :: RoutesHandlers Nil Nil trash1 trash2 m where
+  registerRoutesImpl _ _ _ _ = pure unit
+
+instance routesHandlersCons ::
+  ( RoutesHandlers rTail hTail routes handlers m
+  , IsSymbol name
+  , RowCons name handler trash1 handlers
+  , RowCons name route trash2 routes
+  , RegisterHandler route handler m
+  ) => RoutesHandlers (Cons name route rTail) (Cons name handler hTail) routes handlers m where
+  registerRoutesImpl _ _ routes handlers = do
+    registerHandlerImpl (get nameP routes) (get nameP handlers)
+    registerRoutesImpl (RLProxy :: RLProxy rTail) (RLProxy :: RLProxy hTail) routes handlers
+    where
+      nameP = SProxy :: SProxy name
+
+class RegisterHandler route handler m
+  | route -> handler m
+  where
+    registerHandlerImpl :: route -> handler -> m Unit
+
+instance registerHandlerPost ::
+  ( IsSymbol url
+  , ReadForeign req
+  , WriteForeign res
+  ) => RegisterHandler
+         (Route PostRequest req res url)
+         (req -> Aff (express :: EXPRESS | e) res)
+         (AppM (express :: EXPRESS | e)) where
+  registerHandlerImpl route handler =
+    E.post route' handler'
+    where
+      route' = reflectSymbol (SProxy :: SProxy url)
+      handler' = do
+        body <- getBody
+        case runExcept (read body) of
+          Right (r :: req) -> do
+            response <- liftAff $ handler r
+            sendJson $ write response
+          Left e -> do
+            setStatus 400
+            sendJson $ write {error: show e}
+
+instance registerHandlerGet ::
+  ( IsSymbol url
+  , WriteForeign res
+  ) => RegisterHandler
+         (Route GetRequest Void res url)
+         (Aff (express :: EXPRESS | e) res)
+         (AppM (express :: EXPRESS | e)) where
+  registerHandlerImpl route handler =
+    E.post route' handler'
+    where
+      route' = reflectSymbol (SProxy :: SProxy url)
+      handler' = do
+        response <- liftAff handler
+        sendJson $ write response
+
+routes :: forall e
+   . Config
+  -> App
+       ( fs :: FS
+       , db :: DBEffects
+       , cp :: CHILD_PROCESS
+       | e
+       )
 routes config = do
   useExternal jsonBodyParser
-  get files getFiles
-  get watched getWatchedData
-  post getIcons getIconsData
-  post update updateWatched
-  post open openFile
-  post remove removeFile
+  registerRoutes
+    apiRoutes
+    { files: getFiles config
+    , watched: getWatchedData config
+    , getIcons: getIconsData config
+    , update: updateWatched config
+    , open: openFile config
+    , remove: removeFile config
+    }
   use $ static "dist"
-  where
-    get :: forall res url
-       . IsSymbol url
-      => WriteForeign res
-      => GetRoute res url
-      -> (Config -> Aff _ res)
-      -> AppM _ Unit
-    get = handleGet config
 
-    post :: forall req res url
-       . IsSymbol url
-      => WriteForeign res
-      => ReadForeign req
-      => PostRoute req res url
-      -> (Config -> req -> Aff _ res)
-      -> AppM _ Unit
-    post = handlePost config
-
-main :: Eff _ Unit
+main :: forall e
+   . Eff
+       ( console :: CONSOLE
+       , db :: DBEffects
+       , process :: PROCESS
+       , cp :: CHILD_PROCESS
+       , express :: EXPRESS
+       , fs :: FS
+       | e
+       )
+ Unit
 main = void $ launchAff do
   dir' <- liftEff $ lookupEnv "FILETRACKER_DIR"
   case dir' of

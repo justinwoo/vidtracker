@@ -46,7 +46,7 @@ import Halogen.VDom.Driver as D
 import Network.HTTP.Affjax (AJAX)
 import Network.HTTP.Affjax as AJ
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Routes (GetRoute, PostRoute, files, getIcons, open, remove, update, watched)
+import Routes (GetRoute, PostRoute, apiRoutes)
 import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Text.Parsing.StringParser (Parser, runParser, try)
 import Text.Parsing.StringParser.Combinators (many1Till)
@@ -382,20 +382,20 @@ ui =
       pure next
       where
         getResult = do
-          files <- get files
-          watched <- get watched
+          files <- get apiRoutes.files
+          watched <- get apiRoutes.watched
           pure $ Tuple <$> files <*> watched
 
     eval (GetIcons next) = do
-      _ <- post getIcons $ GetIconsRequest {}
+      _ <- post apiRoutes.getIcons $ GetIconsRequest {}
       pure next
 
     eval (OpenFile path next) = do
-      _ <- post open $ OpenRequest {path}
+      _ <- post apiRoutes.open $ OpenRequest {path}
       pure next
 
     eval (SetWatched path flag next) = do
-      post update (FileData {path, watched: flag})
+      post apiRoutes.update (FileData {path, watched: flag})
         >>= unV' \w -> H.modify _ {watched = w}
       pure next
 
@@ -431,7 +431,7 @@ ui =
       pure next
 
     eval (Delete path next) = do
-      _ <- post remove $ RemoveRequest {path}
+      _ <- post apiRoutes.remove $ RemoveRequest {path}
       eval (FetchData next)
 
 main :: forall e.
