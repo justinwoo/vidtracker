@@ -174,7 +174,7 @@ foreign import _getBody :: Request -> Foreign
 getBody :: forall e. HandlerM e Foreign
 getBody = HandlerM \req _ _ -> pure $ _getBody req
 
-registerRoutes :: forall proxy routes handlers routesL handlersL m
+registerRoutes :: forall routes handlers routesL handlersL m
    . RowToList routes routesL
   => RowToList handlers handlersL
   => Monad m
@@ -195,7 +195,6 @@ class RoutesHandlers
   (routes :: # Type)
   (handlers :: # Type)
   m
-  | routesL -> handlersL handlers m
   where
     registerRoutesImpl :: forall proxy
        . Monad m
