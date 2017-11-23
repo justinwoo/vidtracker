@@ -140,8 +140,13 @@ instance ofA ::
   ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
   ) => OpenFile (Aff e) where
   openFile {dir} (OpenRequest or) = do
-    _ <- liftAff $ case platform of
-          Just Darwin -> liftEff $ void $ spawn "open" (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
+    let
+      simpleOpen = case platform of
+        Just Linux -> Just "xdg-open"
+        Just Darwin -> Just "open"
+        _ -> Nothing
+    _ <- liftAff $ case simpleOpen of
+          Just command -> liftEff $ void $ spawn command (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
           _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
     pure $ Success {status: "ok"}
 
