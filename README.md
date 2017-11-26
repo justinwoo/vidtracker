@@ -4,6 +4,8 @@
 
 blog post about this [here](http://qiita.com/kimagure/items/b576b5bfe370180599f8)
 
+more up-to-date blog post about the routing part of this [here](https://qiita.com/kimagure/items/bb9bd3e4ffe1bba4c214)
+
 a simple application written with [Hyper](https://github.com/owickstrom/hyper) to keep track of videos watched and make opening them easier
 
 features a [Halogen](https://github.com/slamdata/purescript-halogen) front end. full stack purescript!!
