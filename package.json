@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:get-icons": "pulp build --main GetIcons --to get-icons.js",
-    "build:be": "pulp build --to index.js",
+    "build:get-icons": "pulp build -O --main GetIcons --to get-icons.js",
+    "build:be": "pulp build -O --to index.js",
     "build:fe": "pulp build -O -m FrontEnd --to dist/frontend-prebundle.js && webpack -p",
     "build:generate-css": "pulp run -m GenerateStylesheet",
     "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
