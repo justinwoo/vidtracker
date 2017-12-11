@@ -5,9 +5,10 @@
 /generated-docs/
 /.psc*
 /.psa*
-/dist/index.js
-/dist/frontend-prebundle.js
-index.js
+/build/
 /dist/icons
+/dist/index.js
+/.cache
 icons-config.json
 get-icons.js
+index.js

@@ -10,7 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:get-icons": "pulp build -O --main GetIcons --to get-icons.js",
     "build:be": "pulp build -O --to index.js",
-    "build:fe": "pulp build -O -m FrontEnd --to dist/frontend-prebundle.js && webpack -p",
+    "build:fe": "pulp build -O -m FrontEnd --to build/index.js && npm run build:parcel",
+    "build:parcel": "parcel build build/index.js -d dist",
     "build:generate-css": "pulp run -m GenerateStylesheet",
     "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
@@ -27,7 +28,6 @@
     "xhr2": "^0.1.4"
   },
   "devDependencies": {
-    "concurrently": "^3.5.0",
-    "webpack": "^3.8.1"
+    "parcel-bundler": "^1.1.0"
   }
 }
