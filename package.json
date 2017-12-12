@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "postinstall": "psc-package update",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:get-icons": "pulp build -O --main GetIcons --to get-icons.js",
     "build:be": "pulp build -O --to index.js",
@@ -29,5 +30,9 @@
   },
   "devDependencies": {
     "parcel-bundler": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=8.0.0",
+    "npm": ">=3.0.0"
   }
 }
