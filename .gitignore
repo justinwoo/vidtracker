@@ -12,3 +12,5 @@
 icons-config.json
 get-icons.js
 index.js
+out.js.gz
+npm-debug.log
