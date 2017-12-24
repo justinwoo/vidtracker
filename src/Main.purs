@@ -2,7 +2,8 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, attempt, launchAff)
+import Config as C
+import Control.Monad.Aff (Aff, attempt, launchAff_)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Aff.Console (error)
@@ -31,15 +32,16 @@ import Node.Express.Middleware.Static (static)
 import Node.Express.Response (sendJson, setStatus)
 import Node.Express.Types (EXPRESS, ExpressM, Request, Response)
 import Node.FS (FS)
-import Node.FS.Aff (mkdir, readdir, rename, stat)
+import Node.FS.Aff (mkdir, readTextFile, readdir, rename, stat)
 import Node.FS.Stats (modifiedTime)
 import Node.HTTP (HTTP)
 import Node.Path (concat)
 import Node.Platform (Platform(..))
-import Node.Process (PROCESS, lookupEnv, platform)
+import Node.Process (PROCESS, platform)
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, write)
+import Tortellini (parseIni)
 import Type.Prelude (class RowToList, RLProxy(..))
 import Type.Row (Cons, Nil, kind RowList)
 import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Success(Success), WatchedData)
@@ -299,11 +301,11 @@ main :: forall e
        | e
        )
  Unit
-main = void $ launchAff do
-  dir' <- liftEff $ lookupEnv "FILETRACKER_DIR"
+main = launchAff_ do
+  dir' <- parseIni <$> readTextFile UTF8 "./config.ini"
   case dir' of
-    Nothing -> error "we done broke now!!!!"
-    Just dir -> do
+    Left e -> error $ "We broke: " <> show e
+    Right ({vidtracker: {dir}} :: C.Config) -> do
       db <- ensureDB $ concat [dir, "filetracker"]
       void $ liftEff $ listenHttp (routes {db, dir}) 3000 \_ ->
         log "Started server"

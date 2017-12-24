@@ -9,7 +9,7 @@
 /dist/icons
 /dist/index.js
 /.cache
-icons-config.json
+config.ini
 get-icons.js
 index.js
 out.js.gz

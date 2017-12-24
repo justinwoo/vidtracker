@@ -2,6 +2,7 @@ module GetIcons where
 
 import Prelude
 
+import Config (IconsConfig, Config)
 import Control.Bind (bindFlipped)
 import Control.Monad.Aff (Aff, launchAff_, makeAff)
 import Control.Monad.Aff.Console (CONSOLE, error, log)
@@ -10,14 +11,11 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exc
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
-import Data.Foreign (ForeignError)
 import Data.List (find, (:))
-import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 import Data.Set (Set, fromFoldable, member)
 import Data.Traversable (for_)
-import Data.Tuple (Tuple(..))
 import FrontEnd (extractNameKinda)
 import Global.Unsafe (unsafeStringify)
 import LenientHtmlParser (Attribute(..), Name(..), Tag(..), TagName(..), Value(..), parseTags)
@@ -26,21 +24,9 @@ import Node.ChildProcess (CHILD_PROCESS, defaultSpawnOptions, onClose, onError, 
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
 import Node.FS.Aff (readTextFile, readdir)
-import Node.Process (PROCESS, lookupEnv)
-import Simple.JSON (readJSON)
+import Node.Process (PROCESS)
+import Tortellini (parseIni)
 import Types (Path(..))
-
-type Config =
-  { queryUrl :: String
-  }
-
-readConfig :: forall e
-   . Aff
-       ( fs :: FS
-       | e
-       )
-       (Either (NonEmptyList ForeignError) Config)
-readConfig = readJSON <$> readTextFile UTF8 "./icons-config.json"
 
 iconsPath :: String
 iconsPath = "./dist/icons"
@@ -61,7 +47,7 @@ curl url path = do
     pure mempty
 
 downloadIconIfNotExist :: forall e
-   . Config
+   . IconsConfig
   -> Set String
   -> String
   -> Aff
@@ -70,7 +56,7 @@ downloadIconIfNotExist :: forall e
        , cp :: CHILD_PROCESS
        | e
        )
- Unit
+       Unit
 downloadIconIfNotExist config existing name =
   unless (member name existing) do
     log $ "gonna get " <> name
@@ -110,16 +96,15 @@ main :: forall e.
     )
     Unit
 main = launchAff_ do
-  dir <- liftEff $ lookupEnv "FILETRACKER_DIR"
-  config <- readConfig
+  config <- parseIni <$> readTextFile UTF8 "./config.ini"
 
-  case Tuple dir config of
-    Tuple (Just dir') (Right config') -> do
+  case config of
+    (Right ({vidtracker: {dir}, icons: config'} :: Config)) -> do
       names :: Set String <- fromFoldable <$>
         bindFlipped (either (const mempty) pure <<< extractNameKinda <<< Path) <$>
-        readdir dir'
+        readdir dir
       existing <- fromFoldable <$> readdir iconsPath
       for_ names $ downloadIconIfNotExist config' existing
+      log "finished"
       pure unit
-    Tuple Nothing _ -> error "env var not set?"
-    Tuple _ (Left e) -> error $ show e
+    Left e -> error $ "Error: " <> show e

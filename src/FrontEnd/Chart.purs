@@ -29,6 +29,7 @@ import Data.Time.Duration (Days(..))
 import Data.Traversable (traverse_)
 import ECharts.Chart as EC
 import ECharts.Commands as E
+import ECharts.Monad (interpret)
 import ECharts.Monad as EM
 import ECharts.Types as ET
 import ECharts.Types.Phantom as ETP
@@ -95,7 +96,7 @@ component =
         chart <- note "couldn't find existing chart instance" =<< lift (H.gets _.chart)
         now <- lift $ toDateTime <$> now'
         back <- note "somehow calculating time is too hard" $ date <$> adjust (Days (-120.0)) now
-        H.liftEff $ EC.setOption (options back (date now) series) chart
+        H.liftEff $ EC.setOption (interpret $ options back (date now) series) chart
       either error' pure result
       where
         note :: forall m e. MonadThrow e m => e -> Maybe ~> m
@@ -127,7 +128,7 @@ component =
       updateChart' w
       pure next
 
-options :: Date -> Date -> ChartSeries -> EM.DSL ETP.OptionI
+options :: Date -> Date -> ChartSeries -> EM.DSL' ETP.OptionI
 options a b (ChartSeries xs) = do
   E.tooltip do
     E.positionTop
