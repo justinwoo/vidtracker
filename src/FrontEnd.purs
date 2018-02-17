@@ -32,7 +32,6 @@ import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
-import ECharts.Types as ET
 import FrontEnd.Chart as Chart
 import FrontEnd.Style as Styles
 import Global (encodeURIComponent)
@@ -172,7 +171,6 @@ type AppEffects eff =
   ( ajax :: AJAX
   , console :: CONSOLE
   , dom :: DOM
-  , echarts :: ET.ECHARTS
   , exception :: EXCEPTION
   , now :: NOW
   | eff )
@@ -443,7 +441,6 @@ main :: forall e.
     , console :: CONSOLE
     , ajax :: AJAX
     , now :: NOW
-    , echarts :: ET.ECHARTS
     | e
     )
     Unit

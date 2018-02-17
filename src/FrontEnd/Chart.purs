@@ -13,26 +13,22 @@ import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Trans.Class (lift)
 import DOM (DOM)
-import DOM.HTML.Types (readHTMLElement)
+import DOM.Node.Types (readElement)
 import Data.Array (group', intercalate, length)
-import Data.Date (Date)
-import Data.DateTime (adjust, date)
+import Data.DateTime (adjust)
 import Data.DateTime.Instant (toDateTime)
 import Data.Either (Either(..), either)
-import Data.Int (ceil, toNumber)
+import Data.Formatter.DateTime (format)
+import Data.Formatter.DateTime as F
+import Data.Int (ceil)
 import Data.JSDate as JSDate
+import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Newtype (wrap)
 import Data.NonEmpty (NonEmpty, head, oneOf)
 import Data.Number.Format (toString)
 import Data.Time.Duration (Days(..))
-import Data.Traversable (traverse_)
-import ECharts.Chart as EC
-import ECharts.Commands as E
-import ECharts.Monad (interpret)
-import ECharts.Monad as EM
-import ECharts.Types as ET
-import ECharts.Types.Phantom as ETP
+import Gomtang.Basic as Gom
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -48,7 +44,7 @@ newtype ChartSeriesData = ChartSeriesData
   }
 
 type State =
-  { chart :: Maybe ET.Chart
+  { chart :: Maybe Gom.Instance
   , watched :: Array WatchedData
   }
 
@@ -60,7 +56,6 @@ type Effects eff =
   Aff
   ( console :: CONSOLE
   , dom :: DOM
-  , echarts :: ET.ECHARTS
   , exception :: EXCEPTION
   , now :: NOW
   | eff )
@@ -91,12 +86,12 @@ component =
 
     error' = H.liftEff <<< error
 
-    updateChart' w = do 
+    updateChart' w = do
       result <- runExceptT do
         chart <- note "couldn't find existing chart instance" =<< lift (H.gets _.chart)
         now <- lift $ toDateTime <$> now'
-        back <- note "somehow calculating time is too hard" $ date <$> adjust (Days (-120.0)) now
-        H.liftEff $ EC.setOption (interpret $ options back (date now) series) chart
+        back <- note "somehow calculating time is too hard" $ adjust (Days (-120.0)) now
+        H.liftEff $ Gom.setOption (options back now series) chart
       either error' pure result
       where
         note :: forall m e. MonadThrow e m => e -> Maybe ~> m
@@ -117,9 +112,9 @@ component =
     eval :: Query ~> H.ComponentDSL State Query Void (Effects eff)
     eval (Init next) = do
       heatmap <- H.getRef (wrap "heatmap")
-      case runExcept <<< readHTMLElement <$> heatmap of
+      case runExcept <<< readElement <$> heatmap of
         Just (Right el) -> do
-          chart <- H.liftEff $ EC.init el
+          chart <- H.liftEff $ Gom.makeChart el
           H.modify _ {chart = Just chart}
         _ -> error' "can't find heatmap element?"
       eval (UpdateChart [] next)
@@ -128,33 +123,30 @@ component =
       updateChart' w
       pure next
 
-options :: Date -> Date -> ChartSeries -> EM.DSL' ETP.OptionI
-options a b (ChartSeries xs) = do
-  E.tooltip do
-    E.positionTop
-  E.visualMap $ E.continuous do
-    E.min 0.0
-    E.max 10.0
-    E.calculable true
-    E.orient ET.Horizontal
-    E.leftCenter
-    E.topTop
-  E.calendar do
-    E.calendarSpec do
-      E.buildRange do
-        E.addDateValue $ a
-        E.addDateValue $ b
-      E.buildCellSize do
-        E.autoValue
-        E.autoValue
-  E.series do
-    E.heatMap do
-      E.calendarCoordinateSystem
-      E.calendarIndex 0
-      E.buildItems
-        $ traverse_ E.addItem (pair <$> xs)
-  where
-    pair (ChartSeriesData {date, value}) = do
-      E.buildValues do
-        E.addStringValue date
-        E.addValue $ toNumber value
+    options a b (ChartSeries xs) =
+      { tooltip: Gom.makeTooltip { position: "top" }
+      , visualMap: Gom.makeVisualMap
+          { min: 0.0
+          , max: 10.0
+          , calculable: true
+          }
+      , calendar: Gom.makeCalendar
+          { range: format formatter <$> [a, b]
+          , cellSize: ["auto", "auto"]
+          }
+      , series: pure $ Gom.makeHeatMapSeries $
+          { coordinateSystem: "calendar"
+          , calendarIndex: 0
+          , data: prepareSeriesData <$> xs
+        }
+      }
+      where
+        prepareSeriesData (ChartSeriesData {date, value}) =
+          [date, show value]
+        formatter
+          = F.YearFull
+          : F.Placeholder "/"
+          : F.MonthTwoDigits
+          : F.Placeholder "/"
+          : F.DayOfMonthTwoDigits
+          : Nil

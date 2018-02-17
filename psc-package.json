@@ -1,6 +1,6 @@
 {
   "name": "vidtracker",
-  "set": "lasagna",
+  "set": "vidtracker",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
     "tortellini",
@@ -13,7 +13,8 @@
     "halogen-css",
     "now",
     "numbers",
-    "echarts",
+    "gomtang-basic",
+    "formatters",
     "lenient-html-parser",
     "css",
     "node-child-process",
