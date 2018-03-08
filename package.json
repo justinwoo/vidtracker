@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "postinstall": "psc-package update",
+    "postinstall": "psc-package install",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:get-icons": "pulp build -O --main GetIcons --to get-icons.js",
     "build:be": "pulp build -O --to index.js",
@@ -19,17 +19,14 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "body-parser": "^1.18.2",
-    "echarts": "3.7.2",
+    "echarts": "4.0.4",
     "express": "^4.16.2",
     "open": "^0.0.5",
-    "prettier": "^1.8.1",
-    "rimraf": "^2.6.2",
-    "sqlite3": "^3.1.13",
-    "xhr2": "^0.1.4"
+    "prettier": "^1.11.1",
+    "sqlite3": "^3.1.13"
   },
   "devDependencies": {
-    "parcel-bundler": "^1.1.0"
+    "parcel-bundler": "^1.6.2"
   },
   "engines": {
     "node": ">=8.0.0",

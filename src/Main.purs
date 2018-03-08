@@ -10,27 +10,19 @@ import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Except (runExcept)
 import Data.Array (filter, sortBy)
 import Data.Either (Either(Left, Right))
-import Data.Foreign (Foreign)
-import Data.Function.Uncurried (Fn3)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Record (get)
 import Data.String (Pattern(Pattern), contains)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
-import Data.Traversable (traverse)
+import Data.Traversable (sequence, traverse, traverse_)
 import Data.Tuple (Tuple(Tuple), fst, snd)
+import Makkori as M
 import Node.Buffer (BUFFER, Buffer, create, writeString)
 import Node.ChildProcess (CHILD_PROCESS, defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
-import Node.Express.App (App, AppM, listenHttp, use, useExternal)
-import Node.Express.App as E
-import Node.Express.Handler (HandlerM(HandlerM))
-import Node.Express.Middleware.Static (static)
-import Node.Express.Response (sendJson, setStatus)
-import Node.Express.Types (EXPRESS, ExpressM, Request, Response)
 import Node.FS (FS)
 import Node.FS.Aff (mkdir, readTextFile, readdir, rename, stat)
 import Node.FS.Stats (modifiedTime)
@@ -40,7 +32,7 @@ import Node.Platform (Platform(..))
 import Node.Process (PROCESS, platform)
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
-import Simple.JSON (class ReadForeign, class WriteForeign, read, write)
+import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Tortellini (parseIni)
 import Type.Prelude (class RowToList, RLProxy(..))
 import Type.Row (Cons, Nil, kind RowList)
@@ -174,33 +166,29 @@ ensureDB path = do
   _ <- queryDB db "CREATE TABLE IF NOT EXISTS watched (path varchar(20) primary key unique, created datetime);" []
   pure db
 
-foreign import jsonBodyParser :: forall e. Fn3 Request Response (ExpressM e Unit) (ExpressM e Unit)
-
-foreign import _getBody :: Request -> Foreign
-
-getBody :: forall e. HandlerM e Foreign
-getBody = HandlerM \req _ _ -> pure $ _getBody req
-
-registerRoutes :: forall routes handlers routesL handlersL m
+registerRoutes :: forall routes handlers routesL handlersL app m
    . RowToList routes routesL
   => RowToList handlers handlersL
   => Monad m
-  => RoutesHandlers routesL handlersL routes handlers m
+  => RoutesHandlers routesL handlersL routes handlers app m
   => Record routes
   -> Record handlers
+  -> app
   -> m Unit
-registerRoutes routes handlers =
+registerRoutes routes handlers app =
   registerRoutesImpl
     (RLProxy :: RLProxy routesL)
     (RLProxy :: RLProxy handlersL)
     routes
     handlers
+    app
 
 class RoutesHandlers
   (routesL :: RowList)
   (handlersL :: RowList)
   (routes :: # Type)
   (handlers :: # Type)
+  app
   m
   where
     registerRoutesImpl :: forall proxy
@@ -209,28 +197,29 @@ class RoutesHandlers
       -> proxy handlersL
       -> Record routes
       -> Record handlers
+      -> app
       -> m Unit
 
-instance routesHandlersNil :: RoutesHandlers Nil Nil trash1 trash2 m where
-  registerRoutesImpl _ _ _ _ = pure unit
+instance routesHandlersNil :: RoutesHandlers Nil Nil trash1 trash2 app m where
+  registerRoutesImpl _ _ _ _ _ = pure unit
 
 instance routesHandlersCons ::
-  ( RoutesHandlers rTail hTail routes handlers m
+  ( RoutesHandlers rTail hTail routes handlers app m
   , IsSymbol name
   , RowCons name handler trash1 handlers
   , RowCons name route trash2 routes
-  , RegisterHandler route handler m
-  ) => RoutesHandlers (Cons name route rTail) (Cons name handler hTail) routes handlers m where
-  registerRoutesImpl _ _ routes handlers = do
-    registerHandlerImpl (get nameP routes) (get nameP handlers)
-    registerRoutesImpl (RLProxy :: RLProxy rTail) (RLProxy :: RLProxy hTail) routes handlers
+  , RegisterHandler route handler app m
+  ) => RoutesHandlers (Cons name route rTail) (Cons name handler hTail) routes handlers app m where
+  registerRoutesImpl _ _ routes handlers app = do
+    registerHandlerImpl (get nameP routes) (get nameP handlers) app
+    registerRoutesImpl (RLProxy :: RLProxy rTail) (RLProxy :: RLProxy hTail) routes handlers app
     where
       nameP = SProxy :: SProxy name
 
-class RegisterHandler route handler m
-  | route -> handler m
+class RegisterHandler route handler app m
+  | route -> handler app m
   where
-    registerHandlerImpl :: route -> handler -> m Unit
+    registerHandlerImpl :: route -> handler -> app -> m Unit
 
 instance registerHandlerPost ::
   ( IsSymbol url
@@ -238,57 +227,41 @@ instance registerHandlerPost ::
   , WriteForeign res
   ) => RegisterHandler
          (Route PostRequest req res url)
-         (req -> Aff (express :: EXPRESS | e) res)
-         (AppM (express :: EXPRESS | e)) where
-  registerHandlerImpl route handler =
-    E.post route' handler'
+         (req -> Aff e res)
+         M.App
+         (Aff e) where
+  registerHandlerImpl route handler app =
+    liftEff $ M.post (M.Path route') (M.makeHandler handler') app
     where
       route' = reflectSymbol (SProxy :: SProxy url)
-      handler' = do
-        body <- getBody
-        case runExcept (read body) of
-          Right (r :: req) -> do
-            response <- liftAff $ handler r
-            sendJson $ write response
-          Left e -> do
-            setStatus 400
-            sendJson $ write {error: show e}
+      handler' req res = do
+        body <- M.getBody req
+        launchAff_ do
+          response <- case read body of
+              Right r -> do
+                response <- handler r
+                pure $ writeJSON response
+              Left e -> do
+                -- TODO: add setstatus to makkori
+                -- setStatus 400
+                pure $ writeJSON {error: show e}
+          liftEff $ M.sendResponse response res
 
 instance registerHandlerGet ::
   ( IsSymbol url
   , WriteForeign res
   ) => RegisterHandler
          (Route GetRequest Void res url)
-         (Aff (express :: EXPRESS | e) res)
-         (AppM (express :: EXPRESS | e)) where
-  registerHandlerImpl route handler =
-    E.get route' handler'
+         (Aff e res)
+         M.App
+         (Aff e) where
+  registerHandlerImpl route handler app =
+    liftEff $ M.get (M.Path route') (M.makeHandler handler') app
     where
       route' = reflectSymbol (SProxy :: SProxy url)
-      handler' = do
-        response <- liftAff handler
-        sendJson $ write response
-
-routes :: forall e
-   . Config
-  -> App
-       ( fs :: FS
-       , db :: DBEffects
-       , cp :: CHILD_PROCESS
-       | e
-       )
-routes config = do
-  useExternal jsonBodyParser
-  registerRoutes
-    apiRoutes
-    { files: getFiles config
-    , watched: getWatchedData config
-    , getIcons: getIconsData config
-    , update: updateWatched config
-    , open: openFile config
-    , remove: removeFile config
-    }
-  use $ static "dist"
+      handler' _ res = launchAff_ do
+        response <- handler
+        liftEff $ M.sendResponse (writeJSON response) res
 
 main :: forall e
    . Eff
@@ -296,16 +269,35 @@ main :: forall e
        , db :: DBEffects
        , process :: PROCESS
        , cp :: CHILD_PROCESS
-       , express :: EXPRESS
        , fs :: FS
        | e
        )
- Unit
+       Unit
 main = launchAff_ do
   dir' <- parseIni <$> readTextFile UTF8 "./config.ini"
   case dir' of
     Left e -> error $ "We broke: " <> show e
     Right ({vidtracker: {dir}} :: C.Config) -> do
       db <- ensureDB $ concat [dir, "filetracker"]
-      void $ liftEff $ listenHttp (routes {db, dir}) 3000 \_ ->
-        log "Started server"
+      let config = {db, dir}
+      app <- liftEff M.makeApp
+
+      middlewares <- liftEff $ sequence
+        [ M.makeJSONMiddleware {}
+        , M.makeStaticMiddleware (M.Path "dist") {}
+        ]
+      liftEff $ traverse_ (flip (M.use (M.Path "/")) app) middlewares
+
+      registerRoutes
+        apiRoutes
+        { files: getFiles config
+        , watched: getWatchedData config
+        , getIcons: getIconsData config
+        , update: updateWatched config
+        , open: openFile config
+        , remove: removeFile config
+        }
+        app
+
+      _ <- liftEff $ M.listen (M.Port 3000) (log "Started server") app
+      pure unit
