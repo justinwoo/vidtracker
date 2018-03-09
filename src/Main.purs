@@ -237,15 +237,15 @@ instance registerHandlerPost ::
       handler' req res = do
         body <- M.getBody req
         launchAff_ do
-          response <- case read body of
+          {status, response} <- case read body of
               Right r -> do
                 response <- handler r
-                pure $ writeJSON response
+                pure $ {status: 200, response: writeJSON response}
               Left e -> do
-                -- TODO: add setstatus to makkori
-                -- setStatus 400
-                pure $ writeJSON {error: show e}
-          liftEff $ M.sendResponse response res
+                pure $ {status: 400, response: writeJSON {error: show e}}
+          liftEff do
+            M.setStatus status res
+            M.sendResponse response res
 
 instance registerHandlerGet ::
   ( IsSymbol url
