@@ -14,8 +14,9 @@ a simple "full-stack" purescript application to keep track of videos watched and
 
 * sqlite3
 * rust-vlc-finder: https://github.com/justinwoo/rust-vlc-finder
-* FILETRACKER_DIR environment variable
-* icons-config with secret url (ask me)
+* a config.ini that contains...
+    * location of your videos
+    * icons-config with secret url (ask me)
 
 Screenshot:
 
