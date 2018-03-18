@@ -1,8 +1,10 @@
 {
   "name": "vidtracker",
-  "set": "vidtracker",
+  "set": "chanpon",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
+    "debug",
+    "chanpon",
     "makkori",
     "tortellini",
     "prettier",

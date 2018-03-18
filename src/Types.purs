@@ -2,6 +2,7 @@ module Types where
 
 import Prelude
 
+import Chanpon.Classes (class FromResult, class ToParam)
 import Data.Newtype (class Newtype)
 import Simple.JSON (class ReadForeign, class WriteForeign)
 
@@ -11,6 +12,8 @@ derive instance ordPath :: Ord Path
 derive instance ntPath :: Newtype Path _
 derive newtype instance isPath :: ReadForeign Path
 derive newtype instance asPath :: WriteForeign Path
+derive newtype instance tpPath :: ToParam Path
+derive newtype instance fpPath :: FromResult Path
 
 newtype GetIconsRequest = GetIconsRequest
   {}

@@ -2,6 +2,7 @@ module Main where
 
 import Prelude
 
+import Chanpon (Table(..), createTableIfNotExists, deleteFrom, insertOrReplaceInto, selectAll)
 import Config as C
 import Control.Monad.Aff (Aff, attempt, launchAff_)
 import Control.Monad.Aff.AVar (AVAR)
@@ -10,8 +11,13 @@ import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
+import Control.Monad.Except (runExcept)
+import Control.Monad.Except.Trans (ExceptT, except, runExceptT, throwError)
 import Data.Array (filter, sortBy)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(Left, Right))
+import Data.JSDate (now, toISOString)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Record (get)
@@ -31,13 +37,24 @@ import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (PROCESS, platform)
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
-import SQLite3 (DBConnection, DBEffects, FilePath, newDB, queryDB)
+import SQLite3 (DBConnection, DBEffects, FilePath, newDB)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Tortellini (parseIni)
-import Type.Prelude (class RowToList, RLProxy(..))
+import Type.Prelude (class RowToList, Proxy(..), RLProxy(..))
 import Type.Row (Cons, Nil, kind RowList)
-import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Success(Success), WatchedData)
-import Unsafe.Coerce (unsafeCoerce)
+import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Success(Success), WatchedData(..))
+
+data Error
+  = ServerError String
+  | UserError String
+
+prepareResult :: forall a. WriteForeign a => Either Error a -> {status :: Int, response :: String}
+prepareResult (Left (UserError error)) = {status: 400, response: writeJSON {error}}
+prepareResult (Left (ServerError error)) = {status: 500, response: writeJSON {error}}
+prepareResult (Right result) = {status: 200, response: writeJSON result}
+
+watchedTable :: Table
+watchedTable = Table "watched"
 
 readdir' :: forall eff.
   String
@@ -91,7 +108,7 @@ class GetFiles m where
 
 instance gfAF ::
   ( MonadAff (fs :: FS | trash) (Aff e)
-  ) => GetFiles (Aff e) where
+  ) => GetFiles (ExceptT Error (Aff e)) where
   getFiles {dir} = liftAff $ readdir' dir
 
 class GetWatched m where
@@ -99,18 +116,21 @@ class GetWatched m where
 
 instance gwA ::
   ( MonadAff (db :: DBEffects | trash) (Aff e)
-  ) => GetWatched (Aff e) where
+  ) => GetWatched (ExceptT Error (Aff e)) where
   getWatchedData {db} = do
-    watchedData :: Array WatchedData <- liftAff $ unsafeCoerce <$>
-      queryDB db "SELECT path, created FROM watched;" []
-    pure $ watchedData
+    results <- liftAff $ selectAll watchedTable db Proxy
+    case runExcept $ sequence results of
+      Right xs -> do
+        pure $ WatchedData <$> xs
+      Left e -> do
+        throwError <<< ServerError $ "getWatchedData:" <> show e
 
 class GetIcons m where
   getIconsData :: Config -> GetIconsRequest -> m Success
 
 instance giA ::
   ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
-  ) => GetIcons (Aff e) where
+  ) => GetIcons (ExceptT Error (Aff e)) where
   getIconsData {db} _ = do
     _ <- liftAff <<< liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
     pure $ Success {status: "ok"}
@@ -120,11 +140,13 @@ class UpdateWatched m where
 
 instance uwA ::
   ( MonadAff (db :: DBEffects | trash) (Aff e)
-  ) => UpdateWatched (Aff e) where
+  ) => UpdateWatched (ExceptT Error (Aff e)) where
   updateWatched config@{db} (FileData ur) = do
     _ <- liftAff $ if ur.watched
-      then queryDB db "INSERT OR REPLACE INTO watched (path, created) VALUES ($1, datetime());" [unwrap ur.path]
-      else queryDB db "DELETE FROM watched WHERE path = $1" [unwrap ur.path]
+      then do
+        now' <- liftEff <<< unsafeCoerceEff $ toISOString =<< now
+        insertOrReplaceInto watchedTable db {path: ur.path, created: now'}
+      else deleteFrom watchedTable db {path: ur.path}
     getWatchedData config
 
 class OpenFile m where
@@ -132,7 +154,7 @@ class OpenFile m where
 
 instance ofA ::
   ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
-  ) => OpenFile (Aff e) where
+  ) => OpenFile (ExceptT Error (Aff e)) where
   openFile {dir} (OpenRequest or) = do
     let
       simpleOpen = case platform of
@@ -149,7 +171,7 @@ class RemoveFile m where
 
 instance rfA ::
   ( MonadAff (fs :: FS | trash) (Aff e)
-  ) => RemoveFile (Aff e) where
+  ) => RemoveFile (ExceptT Error (Aff e)) where
   removeFile {dir} (RemoveRequest rr) = do
     let archive = concat [dir, "archive"]
     let name = unwrap rr.path
@@ -163,7 +185,10 @@ instance rfA ::
 ensureDB :: forall eff. FilePath -> Aff (db :: DBEffects | eff) DBConnection
 ensureDB path = do
   db <- newDB path
-  _ <- queryDB db "CREATE TABLE IF NOT EXISTS watched (path varchar(20) primary key unique, created datetime);" []
+  createTableIfNotExists watchedTable db
+    { path: "text primary key unique"
+    , created: "datetime"
+    }
   pure db
 
 registerRoutes :: forall routes handlers routesL handlersL app m
@@ -227,7 +252,7 @@ instance registerHandlerPost ::
   , WriteForeign res
   ) => RegisterHandler
          (Route PostRequest req res url)
-         (req -> Aff e res)
+         (req -> ExceptT Error (Aff e) res)
          M.App
          (Aff e) where
   registerHandlerImpl route handler app =
@@ -237,12 +262,9 @@ instance registerHandlerPost ::
       handler' req res = do
         body <- M.getBody req
         launchAff_ do
-          {status, response} <- case read body of
-              Right r -> do
-                response <- handler r
-                pure $ {status: 200, response: writeJSON response}
-              Left e -> do
-                pure $ {status: 400, response: writeJSON {error: show e}}
+          {status, response} <- prepareResult <$> runExceptT do
+            r :: req <- except <<< lmap (UserError <<< show) $ read body
+            handler r
           liftEff do
             M.setStatus status res
             M.sendResponse response res
@@ -252,7 +274,7 @@ instance registerHandlerGet ::
   , WriteForeign res
   ) => RegisterHandler
          (Route GetRequest Void res url)
-         (Aff e res)
+         (ExceptT Error (Aff e) res)
          M.App
          (Aff e) where
   registerHandlerImpl route handler app =
@@ -260,8 +282,10 @@ instance registerHandlerGet ::
     where
       route' = reflectSymbol (SProxy :: SProxy url)
       handler' _ res = launchAff_ do
-        response <- handler
-        liftEff $ M.sendResponse (writeJSON response) res
+        {status, response} <- prepareResult <$> runExceptT handler
+        liftEff do
+          M.setStatus status res
+          M.sendResponse response res
 
 main :: forall e
    . Eff

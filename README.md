@@ -18,6 +18,14 @@ a simple "full-stack" purescript application to keep track of videos watched and
     * location of your videos
     * icons-config with secret url (ask me)
 
+Like so:
+```
+[vidtracker]
+dir=/home/user/Videos
+[icons]
+queryUrl=https://myurl
+```
+
 Screenshot:
 
 ![](http://i.imgur.com/ijyaVcM.png)
