@@ -2,90 +2,58 @@ module FrontEnd.Style where
 
 import CSS
 
+import CSS as CSS
 import CSS.Common (auto, center)
-import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
-import Data.String (toLower)
 import Halogen (ClassName(..))
-import Prelude (class Show, discard, show, ($), (<>))
+import Prelude (discard, ($), (<>))
 
-data ClassNames
-  = Container
-  | Heatmap
-  | FilterWatched
-  | RefreshFiles
-  | GetIcons
-  | File
-  | Watched
-  | Dot
-  | FilterLink
-  | DeleteLink
-  | DeleteConfirmation
-  | FileLink
-  | FileButton
-  | FileNote
-derive instance gcn :: Generic ClassNames _
-instance scn :: Show ClassNames where
-  show = genericShow
-
-container :: ClassName
-container = ClassName (toLower $ show Container)
-heatmap :: ClassName
-heatmap = ClassName (toLower $ show Heatmap)
-filterWatched :: ClassName
-filterWatched = ClassName (toLower $ show FilterWatched)
-refreshFiles :: ClassName
-refreshFiles = ClassName (toLower $ show RefreshFiles)
-getIcons :: ClassName
-getIcons = ClassName (toLower $ show GetIcons)
-file :: ClassName
-file = ClassName (toLower $ show File)
-watched :: ClassName
-watched = ClassName (toLower $ show Watched)
-dot :: ClassName
-dot = ClassName (toLower $ show Dot)
-filterLink :: ClassName
-filterLink = ClassName (toLower $ show FilterLink)
-deleteLink :: ClassName
-deleteLink = ClassName (toLower $ show DeleteLink)
-deleteConfirmation :: ClassName
-deleteConfirmation = ClassName (toLower $ show DeleteConfirmation)
-fileLink :: ClassName
-fileLink = ClassName (toLower $ show FileLink)
-fileButton :: ClassName
-fileButton = ClassName (toLower $ show FileButton)
-fileNote :: ClassName
-fileNote = ClassName (toLower $ show FileNote)
+classNames :: _
+classNames =
+  { container: ClassName "container"
+  , heatmap: ClassName "heatmap"
+  , filterWatched: ClassName "filterWatched"
+  , refreshFiles: ClassName "refreshFiles"
+  , getIcons: ClassName "getIcons"
+  , file: ClassName "file"
+  , watched: ClassName "watched"
+  , dot: ClassName "dot"
+  , filterLink: ClassName "filterLink"
+  , deleteLink: ClassName "deleteLink"
+  , deleteConfirmation: ClassName "deleteConfirmation"
+  , fileLink: ClassName "fileLink"
+  , fileButton: ClassName "fileButton"
+  , fileNote: ClassName "fileNote"
+  }
 
 class_ :: forall a. IsString a => ClassName -> a
-class_ (ClassName cn) = fromString $ "." <> cn
+class_ (ClassName cn) = CSS.fromString $ "." <> cn
 
 stylesheet :: Rendered
 stylesheet = render do
-  class_ container ? do
+  class_ classNames.container ? do
     margin nil auto nil auto
     width (px 1024.0)
-  class_ heatmap ? do
+  class_ classNames.heatmap ? do
     width (pct 100.0)
     height (px 300.0)
-  class_ filterWatched ? do
+  class_ classNames.filterWatched ? do
     marginTop (px 10.0)
     h4 ? do
       display inline
       marginRight (px 5.0)
-  class_ refreshFiles ? do
+  class_ classNames.refreshFiles ? do
     marginTop (px 10.0)
     display block
-  class_ getIcons ? do
+  class_ classNames.getIcons ? do
     marginTop (px 10.0)
     display block
-  class_ file ? do
+  class_ classNames.file ? do
     display flex
     flexDirection row
     alignItems center
-  class_ watched ? do
+  class_ classNames.watched ? do
     backgroundColor (rgba 0 120 231 0.1)
-  class_ dot ? do
+  class_ classNames.dot ? do
     width (px 50.0)
     height (px 50.0)
     backgroundSize cover
@@ -94,29 +62,29 @@ stylesheet = render do
     backgroundRepeat noRepeat
     star ? do
       position absolute
-  class_ filterLink ? do
+  class_ classNames.filterLink ? do
     width (px 100.0)
     opacity 0.25
-  class_ filterLink `with` hover ? do
+  class_ classNames.filterLink `with` hover ? do
       opacity 1.0
-  class_ deleteLink ? do
+  class_ classNames.deleteLink ? do
     boxSizing borderBox
     marginLeft (rem 1.0)
     width (px 100.0)
     opacity 0.25
-  class_ deleteLink `with` hover ? do
+  class_ classNames.deleteLink `with` hover ? do
       opacity 1.0
-  class_ deleteConfirmation ? do
+  class_ classNames.deleteConfirmation ? do
     backgroundColor red
     color white
-  class_ fileLink ? do
+  class_ classNames.fileLink ? do
     flexGrow 1
     flexShrink 1
     flexBasis nil
     padding (px 10.0) (px 10.0) (px 10.0) (px 10.0)
-  class_ fileButton ? do
+  class_ classNames.fileButton ? do
     width (px 200.0)
-  class_ fileNote ? do
+  class_ classNames.fileNote ? do
     width (px 150.0)
     margin (px 10.0) (px 10.0) (px 10.0) (px 10.0)
   h3 ? do

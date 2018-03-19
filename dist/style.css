@@ -6,18 +6,18 @@
   width: 100%;
   height: 300px;
 }
-.filterwatched {
+.filterWatched {
   margin-top: 10px;
 }
-.filterwatched h4 {
+.filterWatched h4 {
   display: inline;
   margin-right: 5px;
 }
-.refreshfiles {
+.refreshFiles {
   margin-top: 10px;
   display: block;
 }
-.geticons {
+.getIcons {
   margin-top: 10px;
   display: block;
 }
@@ -40,36 +40,36 @@
 .dot * {
   position: absolute;
 }
-.filterlink {
+.filterLink {
   width: 100px;
   opacity: 0.25;
 }
-.filterlink:hover {
+.filterLink:hover {
   opacity: 1;
 }
-.deletelink {
+.deleteLink {
   box-sizing: border-box;
   margin-left: 1rem;
   width: 100px;
   opacity: 0.25;
 }
-.deletelink:hover {
+.deleteLink:hover {
   opacity: 1;
 }
-.deleteconfirmation {
+.deleteConfirmation {
   background-color: hsl(0, 100%, 50%);
   color: hsl(0, 0%, 100%);
 }
-.filelink {
+.fileLink {
   flex-grow: 1;
   flex-shrink: 1;
   flex-basis: 0;
   padding: 10px 10px 10px 10px;
 }
-.filebutton {
+.fileButton {
   width: 200px;
 }
-.filenote {
+.fileNote {
   width: 150px;
   margin: 10px 10px 10px 10px;
 }

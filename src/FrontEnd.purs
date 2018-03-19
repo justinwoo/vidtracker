@@ -33,7 +33,7 @@ import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import FrontEnd.Chart as Chart
-import FrontEnd.Style as Styles
+import FrontEnd.Style (classNames)
 import Global (encodeURIComponent)
 import Halogen as H
 import Halogen.Aff as HA
@@ -143,6 +143,12 @@ newtype ChartSeriesData = ChartSeriesData
   , value :: Int
   }
 
+data RemoteTaskState
+  = Standby
+  | Working
+  | Success
+  | Failure
+
 type State =
   { files :: Array Path
   , watched :: Array WatchedData
@@ -150,6 +156,7 @@ type State =
   , sorting :: Sorting
   , search :: String
   , deleteConfirmations :: Set Path
+  , getIcons :: RemoteTaskState
   }
 
 data Query a
@@ -198,12 +205,13 @@ ui =
       , sorting: NoSorting
       , search: mempty
       , deleteConfirmations: mempty
+      , getIcons: Standby
       }
 
     render :: State -> H.ParentHTML Query Chart.Query Slot (AppEffects eff)
     render state =
       HH.div
-        [ HP.class_ $ Styles.container ]
+        [ HP.class_ $ classNames.container ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
           , heatmap
           , refreshButton
@@ -218,7 +226,7 @@ ui =
         refreshButton =
           HH.button
             [ HP.classes $
-              [ Styles.refreshFiles
+              [ classNames.refreshFiles
               , wrap "pure-button"
               ]
             , HE.onClick <<< HE.input_ $ FetchData
@@ -227,8 +235,13 @@ ui =
         getIconsButton =
           HH.button
             [ HP.classes $
-              [ Styles.getIcons
+              [ classNames.getIcons
               , wrap "pure-button"
+              , wrap case state.getIcons of
+                  Working -> "button-warning"
+                  Success -> "button-success"
+                  Failure -> "button-failure"
+                  _ -> ""
               ]
             , HE.onClick <<< HE.input_ $ GetIcons
             ]
@@ -236,7 +249,7 @@ ui =
         filterCheckbox =
           HH.button
             [ HP.classes $
-              [ Styles.filterWatched
+              [ classNames.filterWatched
               , wrap "pure-button"
               ] <> (guard state.filterWatched $> wrap "pure-button-primary")
             , HE.onClick <<< HE.input_ <<< ToggleFilterWatched <<< not $ state.filterWatched
@@ -257,24 +270,24 @@ ui =
               [ HH.text "Clear" ]
         header =
           HH.div
-            [ HP.class_ $ Styles.file]
+            [ HP.class_ $ classNames.file]
             [ HH.h3
-              [ HP.class_ $ Styles.dot
+              [ HP.class_ $ classNames.dot
               ] []
             , HH.h3
-              [ HP.class_ $ Styles.fileLink
+              [ HP.class_ $ classNames.fileLink
               , HE.onClick $ HE.input_ (ChangeSorting Title)
               ] [ HH.text $ "Title" <> displayTicker Title ]
             , HH.h3
-              [ HP.class_ $ Styles.fileButton
+              [ HP.class_ $ classNames.fileButton
               , HE.onClick $ HE.input_ (ChangeSorting Status)
               ] [ HH.text $ "Status" <> displayTicker Status ]
-            , HH.h3 [HP.class_ $ Styles.fileNote ] [ HH.text "Date" ]
+            , HH.h3 [HP.class_ $ classNames.fileNote ] [ HH.text "Date" ]
             , HH.h3
-              [ HP.class_ $ Styles.filterLink
+              [ HP.class_ $ classNames.filterLink
               ] [ HH.text "" ]
             , HH.h3
-              [ HP.class_ $ Styles.deleteLink
+              [ HP.class_ $ classNames.deleteLink
               ] [ HH.text "" ]
             ]
         files =
@@ -307,9 +320,9 @@ ui =
         findWatched path = find (\(WatchedData fd) -> fd.path == path) state.watched
         file path =
           HH.div
-            [ HP.class_ $ Styles.file ]
+            [ HP.class_ $ classNames.file ]
             [ HH.span
-              [ HP.class_ $ Styles.dot
+              [ HP.class_ $ classNames.dot
               , style do
                 case extractNameKinda path of
                   Right name ->
@@ -318,12 +331,12 @@ ui =
                 -- borderColor $ fromMaybe (rgb 255 105 180) dotColor
               ] []
             , HH.a
-              [ HP.class_ Styles.fileLink
+              [ HP.class_ classNames.fileLink
               , HE.onClick $ HE.input_ (OpenFile path) ]
               [ HH.text $ unwrap path ]
             , HH.button
               [ HP.classes $
-                [ Styles.fileButton
+                [ classNames.fileButton
                 , wrap "pure-button"
                 , wrap $ maybe "" (const "pure-button-primary") watched
                 ]
@@ -331,11 +344,11 @@ ui =
               ]
               [ HH.text $ maybe "not watched" (const "watched") watched ]
             , HH.span
-              [ HP.class_ $ Styles.fileNote ]
+              [ HP.class_ $ classNames.fileNote ]
               [ HH.text $ maybe "" id watched ]
             , HH.button
               [ HP.classes $
-                [ Styles.filterLink
+                [ classNames.filterLink
                 , wrap "pure-button"
                 ]
               , HE.onClick $ HE.input_ (Filter path)
@@ -343,10 +356,10 @@ ui =
               [ HH.text "set filter" ]
             , HH.button
               [ HP.classes $
-                [ Styles.deleteLink
+                [ classNames.deleteLink
                 , wrap "pure-button"
                 , if deleteConfirmation
-                    then Styles.deleteConfirmation
+                    then classNames.deleteConfirmation
                     else wrap ""
                 ]
               , HE.onClick $ HE.input_ $
@@ -385,6 +398,7 @@ ui =
           pure $ Tuple <$> files <*> watched
 
     eval (GetIcons next) = do
+      H.modify _ {getIcons = Working}
       _ <- post apiRoutes.getIcons $ GetIconsRequest {}
       pure next
 
