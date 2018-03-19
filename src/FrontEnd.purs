@@ -18,11 +18,10 @@ import DOM (DOM)
 import Data.Array (filter, fromFoldable, reverse, sort, sortWith)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
-import Data.Foreign (ForeignError)
+import Data.Foreign (MultipleErrors)
 import Data.HTTP.Method (Method(..))
 import Data.JSDate as JSDate
 import Data.List (List)
-import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
@@ -31,7 +30,6 @@ import Data.String (Pattern(Pattern), contains, fromCharArray, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
-import Data.Validation.Semigroup (V, invalid, unV)
 import FrontEnd.Chart as Chart
 import FrontEnd.Style (classNames)
 import Global (encodeURIComponent)
@@ -50,7 +48,7 @@ import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 import Text.Parsing.StringParser (Parser, runParser, try)
 import Text.Parsing.StringParser.Combinators (many1Till)
 import Text.Parsing.StringParser.String (anyChar, anyDigit, char, string)
-import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Path(..), RemoveRequest(..), WatchedData(..))
+import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Operation(..), Path(..), RemoveRequest(..), WatchedData(..))
 
 nameParser :: Parser (List Char)
 nameParser = do
@@ -79,7 +77,7 @@ extractNameKinda (Path s) =
         '.' -> mempty
         x -> pure x
 
-type VE a = V (NonEmptyList ForeignError) a
+type E a = Either MultipleErrors a
 
 get :: forall res url m eff.
   MonadAff
@@ -89,9 +87,9 @@ get :: forall res url m eff.
     m
   => ReadForeign res
   => IsSymbol url
-  => GetRoute res url -> m (VE res)
+  => GetRoute res url -> m (E res)
 get _ =
-  H.liftAff $ either invalid pure <$> parseResponse <$> action
+  H.liftAff $ parseResponse <$> action
   where
     action = AJ.affjax $ AJ.defaultRequest
       { method = Left GET
@@ -110,9 +108,9 @@ post :: forall method req res url m eff.
   => WriteForeign req
   => ReadForeign res
   => IsSymbol url
-  => PostRoute req res url -> req -> m (VE res)
+  => PostRoute req res url -> req -> m (E res)
 post _ body =
-  H.liftAff $ either invalid pure <$> parseResponse <$> action
+  H.liftAff $ parseResponse <$> action
   where
     action = AJ.affjax $ AJ.defaultRequest
       { method = Left POST
@@ -122,14 +120,14 @@ post _ body =
       }
     parseResponse response = readJSON response.response
 
-unV' :: forall e a m.
+unE :: forall e a m.
   MonadAff
     ( console :: CONSOLE
     | e
     )
     m
-  => (a -> m Unit) -> VE a -> m Unit
-unV' = unV (H.liftAff <<< errorShow)
+  => (a -> m Unit) -> E a -> m Unit
+unE = either (H.liftAff <<< errorShow)
 
 data Dir = ASC | DSC
 derive instance eqDir :: Eq Dir
@@ -237,15 +235,17 @@ ui =
             [ HP.classes $
               [ classNames.getIcons
               , wrap "pure-button"
-              , wrap case state.getIcons of
-                  Working -> "button-warning"
-                  Success -> "button-success"
-                  Failure -> "button-failure"
-                  _ -> ""
               ]
             , HE.onClick <<< HE.input_ $ GetIcons
             ]
-            [ HH.text "Run Get Icons" ]
+            [ HH.text
+               $ "Run Get Icons"
+              <> case state.getIcons of
+                   Standby -> ": Standby"
+                   Working -> ": Working..."
+                   Success -> ": Success"
+                   Failure -> ": Failed"
+            ]
         filterCheckbox =
           HH.button
             [ HP.classes $
@@ -387,7 +387,7 @@ ui =
       eval (FetchData next)
 
     eval (FetchData next) = do
-      getResult >>= unV'
+      getResult >>= unE
         \(Tuple f w) -> do
           H.modify _ {files = f, watched = w}
       pure next
@@ -399,7 +399,10 @@ ui =
 
     eval (GetIcons next) = do
       H.modify _ {getIcons = Working}
-      _ <- post apiRoutes.getIcons $ GetIconsRequest {}
+      result <- post apiRoutes.getIcons $ GetIconsRequest {}
+      case result of
+        Right (Operation {success}) | success -> H.modify _ {getIcons = Success}
+        _ -> H.modify _ {getIcons = Failure}
       pure next
 
     eval (OpenFile path next) = do
@@ -408,7 +411,7 @@ ui =
 
     eval (SetWatched path flag next) = do
       post apiRoutes.update (FileData {path, watched: flag})
-        >>= unV' \w -> H.modify _ {watched = w}
+        >>= unE \w -> H.modify _ {watched = w}
       pure next
 
     eval (Filter path next) = do

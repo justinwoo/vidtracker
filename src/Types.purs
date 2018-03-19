@@ -48,8 +48,8 @@ derive instance ordWD :: Ord WatchedData
 derive newtype instance ifWD :: ReadForeign WatchedData
 derive newtype instance afWD :: WriteForeign WatchedData
 
-newtype Success = Success
-  { status :: String
+newtype Operation = Operation
+  { success :: Boolean
   }
-derive newtype instance ifSC :: ReadForeign Success
-derive newtype instance afSC :: WriteForeign Success
+derive newtype instance ifSC :: ReadForeign Operation
+derive newtype instance afSC :: WriteForeign Operation

@@ -3,7 +3,7 @@ module Routes where
 import Prelude
 
 import Data.HTTP.Method (Method(..))
-import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Success, WatchedData)
+import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Operation, WatchedData)
 
 foreign import kind RequestMethod
 foreign import data GetRequest :: RequestMethod
@@ -28,10 +28,10 @@ type PostRoute = Route PostRequest
 apiRoutes ::
   { files :: GetRoute (Array Path) "/api/files"
   , watched :: GetRoute (Array WatchedData) "/api/watched"
-  , getIcons :: PostRoute GetIconsRequest Success "/api/get-icons"
+  , getIcons :: PostRoute GetIconsRequest Operation "/api/get-icons"
   , update :: PostRoute FileData (Array WatchedData) "/api/update"
-  , open :: PostRoute OpenRequest Success "/api/open"
-  , remove :: PostRoute RemoveRequest Success "/api/remove"
+  , open :: PostRoute OpenRequest Operation "/api/open"
+  , remove :: PostRoute RemoveRequest Operation "/api/remove"
   }
 apiRoutes =
   { files: Route

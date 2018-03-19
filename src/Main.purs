@@ -42,7 +42,7 @@ import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Tortellini (parseIni)
 import Type.Prelude (class RowToList, Proxy(..), RLProxy(..))
 import Type.Row (Cons, Nil, kind RowList)
-import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Success(Success), WatchedData(..))
+import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Operation(Operation), WatchedData(..))
 
 data Error
   = ServerError String
@@ -126,14 +126,14 @@ instance gwA ::
         throwError <<< ServerError $ "getWatchedData:" <> show e
 
 class GetIcons m where
-  getIconsData :: Config -> GetIconsRequest -> m Success
+  getIconsData :: Config -> GetIconsRequest -> m Operation
 
 instance giA ::
   ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
   ) => GetIcons (ExceptT Error (Aff e)) where
   getIconsData {db} _ = do
     _ <- liftAff <<< liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
-    pure $ Success {status: "ok"}
+    pure $ Operation {success: true}
 
 class UpdateWatched m where
   updateWatched :: Config -> FileData -> m (Array WatchedData)
@@ -150,7 +150,7 @@ instance uwA ::
     getWatchedData config
 
 class OpenFile m where
-  openFile :: Config -> OpenRequest -> m (Success)
+  openFile :: Config -> OpenRequest -> m (Operation)
 
 instance ofA ::
   ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
@@ -164,10 +164,10 @@ instance ofA ::
     _ <- liftAff $ case simpleOpen of
           Just command -> liftEff $ void $ spawn command (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
           _ -> liftEff $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
-    pure $ Success {status: "ok"}
+    pure $ Operation {success: true}
 
 class RemoveFile m where
-  removeFile :: Config -> RemoveRequest -> m (Success)
+  removeFile :: Config -> RemoveRequest -> m (Operation)
 
 instance rfA ::
   ( MonadAff (fs :: FS | trash) (Aff e)
@@ -180,7 +180,7 @@ instance rfA ::
     _ <- liftAff $ do
       void $ attempt $ mkdir archive
       void $ attempt $ rename old new
-    pure $ Success {status: "ok"}
+    pure $ Operation {success: true}
 
 ensureDB :: forall eff. FilePath -> Aff (db :: DBEffects | eff) DBConnection
 ensureDB path = do
