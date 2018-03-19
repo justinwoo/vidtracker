@@ -21,6 +21,7 @@
   "dependencies": {
     "echarts": "4.0.4",
     "express": "^4.16.2",
+    "node-fetch": "^2.1.1",
     "open": "^0.0.5",
     "prettier": "^1.11.1",
     "sqlite3": "^3.1.13"

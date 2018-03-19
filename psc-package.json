@@ -3,6 +3,7 @@
   "set": "chanpon",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
+    "milkis",
     "debug",
     "chanpon",
     "makkori",

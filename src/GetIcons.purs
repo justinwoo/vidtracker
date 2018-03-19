@@ -19,7 +19,7 @@ import Data.Traversable (for_)
 import FrontEnd (extractNameKinda)
 import Global.Unsafe (unsafeStringify)
 import LenientHtmlParser (Attribute(..), Name(..), Tag(..), TagName(..), Value(..), parseTags)
-import Network.HTTP.Affjax (AJAX, get)
+import Milkis as M
 import Node.ChildProcess (CHILD_PROCESS, defaultSpawnOptions, onClose, onError, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
@@ -52,7 +52,6 @@ downloadIconIfNotExist :: forall e
   -> String
   -> Aff
        ( console :: CONSOLE
-       , ajax :: AJAX
        , cp :: CHILD_PROCESS
        | e
        )
@@ -60,7 +59,7 @@ downloadIconIfNotExist :: forall e
 downloadIconIfNotExist config existing name =
   unless (member name existing) do
     log $ "gonna get " <> name
-    html <- _.response <$> get (config.queryUrl <> name)
+    html <- M.text =<< M.fetch (M.URL $ config.queryUrl <> name) M.defaultFetchOptions
     case extractFirstImage =<<
       (lmap (append "couldn't get tags " <<< show) (parseTags html)) of
       Right url -> do
@@ -88,7 +87,6 @@ downloadIconIfNotExist config existing name =
 main :: forall e.
   Eff
     ( fs :: FS
-    , ajax :: AJAX
     , console :: CONSOLE
     , cp :: CHILD_PROCESS
     , process :: PROCESS
