@@ -1,6 +1,6 @@
 {
   "name": "vidtracker",
-  "set": "chanpon",
+  "set": "laziji",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
     "milkis",

@@ -40,7 +40,7 @@ import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Tortellini (parseIni)
-import Type.Prelude (class RowToList, Proxy(..), RLProxy(..))
+import Type.Prelude (class RowToList, RLProxy(RLProxy))
 import Type.Row (Cons, Nil, kind RowList)
 import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Operation(Operation), WatchedData(..))
 
@@ -118,7 +118,7 @@ instance gwA ::
   ( MonadAff (db :: DBEffects | trash) (Aff e)
   ) => GetWatched (ExceptT Error (Aff e)) where
   getWatchedData {db} = do
-    results <- liftAff $ selectAll watchedTable db Proxy
+    results <- liftAff $ selectAll watchedTable db
     case runExcept $ sequence results of
       Right xs -> do
         pure $ WatchedData <$> xs
