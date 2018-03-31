@@ -11,6 +11,8 @@ import Control.Monad.Aff.Console (error)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (ExceptT, except, runExceptT, throwError)
@@ -27,7 +29,7 @@ import Data.Traversable (sequence, traverse, traverse_)
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Makkori as M
 import Node.Buffer (BUFFER, Buffer, create, writeString)
-import Node.ChildProcess (CHILD_PROCESS, defaultExecOptions, defaultSpawnOptions, exec, spawn)
+import Node.ChildProcess (CHILD_PROCESS, Exit(..), defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
 import Node.FS.Aff (mkdir, readTextFile, readdir, rename, stat)
@@ -39,6 +41,7 @@ import Node.Process (PROCESS, platform)
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, DBEffects, FilePath, newDB)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
+import Sunde as Sunde
 import Tortellini (parseIni)
 import Type.Prelude (class RowToList, RLProxy(RLProxy))
 import Type.Row (Cons, Nil, kind RowList)
@@ -129,11 +132,13 @@ class GetIcons m where
   getIconsData :: Config -> GetIconsRequest -> m Operation
 
 instance giA ::
-  ( MonadAff (cp :: CHILD_PROCESS | trash) (Aff e)
+  ( MonadAff (cp :: CHILD_PROCESS, ref :: REF, exception :: EXCEPTION | trash) (Aff e)
   ) => GetIcons (ExceptT Error (Aff e)) where
   getIconsData {db} _ = do
-    _ <- liftAff <<< liftEff $ spawn "node" ["get-icons.js"] defaultSpawnOptions
-    pure $ Operation {success: true}
+    result <- liftAff $ Sunde.spawn "node" ["get-icons.js"] defaultSpawnOptions
+    pure $ case result.exit of
+      Normally 0 -> Operation {success: true}
+      _ -> Operation {success: false}
 
 class UpdateWatched m where
   updateWatched :: Config -> FileData -> m (Array WatchedData)
@@ -294,6 +299,8 @@ main :: forall e
        , process :: PROCESS
        , cp :: CHILD_PROCESS
        , fs :: FS
+       , ref :: REF
+       , exception :: EXCEPTION
        | e
        )
        Unit

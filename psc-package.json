@@ -1,8 +1,9 @@
 {
   "name": "vidtracker",
-  "set": "laziji",
+  "set": "kefir",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
+    "sunde",
     "milkis",
     "debug",
     "chanpon",
