@@ -19,7 +19,6 @@ import Data.Array (filter, fromFoldable, reverse, sort, sortWith)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (MultipleErrors)
-import Data.HTTP.Method (Method(..))
 import Data.JSDate as JSDate
 import Data.List (List)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
@@ -40,11 +39,10 @@ import Halogen.HTML.CSS (style)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver as D
-import Network.HTTP.Affjax (AJAX)
-import Network.HTTP.Affjax as AJ
-import Network.HTTP.RequestHeader (RequestHeader(..))
+import Milkis as M
+import Milkis.Impl.Window (windowFetch)
 import Routes (GetRoute, PostRoute, apiRoutes)
-import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
+import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Text.Parsing.StringParser (Parser, runParser, try)
 import Text.Parsing.StringParser.Combinators (many1Till)
 import Text.Parsing.StringParser.String (anyChar, anyDigit, char, string)
@@ -81,44 +79,37 @@ type E a = Either MultipleErrors a
 
 get :: forall res url m eff.
   MonadAff
-    ( ajax :: AJAX
-    | eff
-    )
+    eff
     m
   => ReadForeign res
   => IsSymbol url
   => GetRoute res url -> m (E res)
 get _ =
-  H.liftAff $ parseResponse <$> action
+  H.liftAff $ read <$> action
   where
-    action = AJ.affjax $ AJ.defaultRequest
-      { method = Left GET
-      , url = reflectSymbol (SProxy :: SProxy url)
-      , headers = [RequestHeader "Content-Type" "application/json"]
-      }
-    parseResponse response = readJSON response.response
-
+    url = reflectSymbol (SProxy :: SProxy url)
+    fetch = M.fetch windowFetch
+    action = M.json =<< fetch (M.URL url) M.defaultFetchOptions
 
 post :: forall method req res url m eff.
   MonadAff
-    ( ajax :: AJAX
-    | eff
-    )
+    eff
     m
   => WriteForeign req
   => ReadForeign res
   => IsSymbol url
   => PostRoute req res url -> req -> m (E res)
 post _ body =
-  H.liftAff $ parseResponse <$> action
+  H.liftAff $ read <$> action
   where
-    action = AJ.affjax $ AJ.defaultRequest
-      { method = Left POST
-      , url = reflectSymbol (SProxy :: SProxy url)
-      , content = pure $ writeJSON body
-      , headers = [RequestHeader "Content-Type" "application/json"]
+    url = reflectSymbol (SProxy :: SProxy url)
+    fetch = M.fetch windowFetch
+    options =
+      { method: M.postMethod
+      , headers: M.makeHeaders { "Content-Type": "application/json" }
+      , body: writeJSON body
       }
-    parseResponse response = readJSON response.response
+    action = M.json =<< fetch (M.URL url) options
 
 unE :: forall e a m.
   MonadAff
@@ -173,8 +164,7 @@ data Query a
 
 type AppEffects eff =
   Aff
-  ( ajax :: AJAX
-  , console :: CONSOLE
+  ( console :: CONSOLE
   , dom :: DOM
   , exception :: EXCEPTION
   , now :: NOW
@@ -456,7 +446,6 @@ main :: forall e.
     , exception :: EXCEPTION
     , dom :: DOM
     , console :: CONSOLE
-    , ajax :: AJAX
     , now :: NOW
     | e
     )

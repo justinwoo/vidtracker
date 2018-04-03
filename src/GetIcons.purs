@@ -20,6 +20,7 @@ import FrontEnd (extractNameKinda)
 import Global.Unsafe (unsafeStringify)
 import LenientHtmlParser (Attribute(..), Name(..), Tag(..), TagName(..), Value(..), parseTags)
 import Milkis as M
+import Milkis.Impl.Node (nodeFetch)
 import Node.ChildProcess (CHILD_PROCESS, defaultSpawnOptions, onClose, onError, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
@@ -59,7 +60,7 @@ downloadIconIfNotExist :: forall e
 downloadIconIfNotExist config existing name =
   unless (member name existing) do
     log $ "gonna get " <> name
-    html <- M.text =<< M.fetch (M.URL $ config.queryUrl <> name) M.defaultFetchOptions
+    html <- M.text =<< M.fetch nodeFetch (M.URL $ config.queryUrl <> name) M.defaultFetchOptions
     case extractFirstImage =<<
       (lmap (append "couldn't get tags " <<< show) (parseTags html)) of
       Right url -> do

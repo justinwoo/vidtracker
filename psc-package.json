@@ -1,6 +1,6 @@
 {
   "name": "vidtracker",
-  "set": "kefir",
+  "set": "gulerodskage",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
     "sunde",
@@ -26,7 +26,6 @@
     "simple-json",
     "halogen",
     "validation",
-    "affjax",
     "node-sqlite3",
     "node-process",
     "console",
