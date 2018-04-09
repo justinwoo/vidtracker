@@ -20,7 +20,6 @@ import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (MultipleErrors)
 import Data.JSDate as JSDate
-import Data.List (List)
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
@@ -41,30 +40,11 @@ import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver as D
 import Milkis as M
 import Milkis.Impl.Window (windowFetch)
+import NameParser (nameParser)
 import Routes (GetRoute, PostRoute, apiRoutes)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
-import Text.Parsing.StringParser (Parser, runParser, try)
-import Text.Parsing.StringParser.Combinators (many1Till)
-import Text.Parsing.StringParser.String (anyChar, anyDigit, char, string)
+import Text.Parsing.StringParser (runParser)
 import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Operation(..), Path(..), RemoveRequest(..), WatchedData(..))
-
-nameParser :: Parser (List Char)
-nameParser = do
-    thingInBrackets
-    _ <- char ' '
-    title <- many1Till anyChar endSequence
-    pure title
-  where
-    thingInBrackets = do
-      _ <- char '['
-      _ <- many1Till anyChar (char ']')
-      pure unit
-    endSequence = try do
-      _ <- string " - "
-      _ <- many1Till anyDigit (char ' ')
-      thingInBrackets
-      _ <- char '.'
-      pure unit
 
 extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s) =

@@ -70,7 +70,7 @@ downloadIconIfNotExist config existing name =
       Left e ->
         error e
   where
-    matchSrc (Attribute (Name name) _) = name == "src"
+    matchSrc (Attribute (Name n) _) = n == "src"
     extractFirstImage tags =
       case tags of
         -- $('article > div > div > a > img')

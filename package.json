@@ -8,7 +8,7 @@
   },
   "scripts": {
     "postinstall": "psc-package install",
-    "test": "pulp build -m Test.Main --to test/index.js && node test/index.js",
+    "test": "pulp build --include test && node -e 'require(\"./output/Test.Main\").main()' ",
     "build:get-icons": "pulp build -O --main GetIcons --to get-icons.js",
     "build:be": "pulp build -O --to index.js",
     "build:fe": "pulp build -O -m FrontEnd --to build/index.js && npm run build:parcel",
