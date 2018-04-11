@@ -8,13 +8,13 @@
   },
   "scripts": {
     "postinstall": "psc-package install",
-    "test": "pulp build --include test && node -e 'require(\"./output/Test.Main\").main()' ",
-    "build:get-icons": "pulp build -O --main GetIcons --to get-icons.js",
-    "build:be": "pulp build -O --to index.js",
-    "build:fe": "pulp build -O -m FrontEnd --to build/index.js && npm run build:parcel",
+    "test": "psc-package build -- test && node -e 'require(\"./output/Test.Main\").main()' ",
+    "build:get-icons": "purs bundle './output/*/*.js' -m GetIcons --main GetIcons -o get-icons.js",
+    "build:be": "purs bundle './output/*/*.js' -m Main --main Main -o index.js",
+    "build:fe": "purs bundle './output/*/*.js' -m FrontEnd --main FrontEnd -o build/index.js && npm run build:parcel",
     "build:parcel": "parcel build build/index.js -d dist",
-    "build:generate-css": "pulp run -m GenerateStylesheet",
-    "build": "npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
+    "build:generate-css": "purs bundle './output/*/*.js' -m GenerateStylesheet --main GenerateStylesheet -o generate-css.js && node generate-css.js",
+    "build": "psc-package build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
   "author": "",
   "license": "MIT",

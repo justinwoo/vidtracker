@@ -12,5 +12,6 @@
 config.ini
 get-icons.js
 index.js
+generate-css.js
 out.js.gz
 npm-debug.log
