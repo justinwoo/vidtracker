@@ -7,7 +7,23 @@ import CSS.Common (auto, center)
 import Halogen (ClassName(..))
 import Prelude (discard, ($), (<>))
 
-classNames :: _
+classNames ::
+  { container :: ClassName
+  , heatmap :: ClassName
+  , filterWatched :: ClassName
+  , refreshFiles :: ClassName
+  , getIcons :: ClassName
+  , file :: ClassName
+  , watched :: ClassName
+  , dot :: ClassName
+  , filterLink :: ClassName
+  , deleteLink :: ClassName
+  , deleteConfirmation :: ClassName
+  , fileEpisode :: ClassName
+  , fileLink :: ClassName
+  , fileButton :: ClassName
+  , fileNote :: ClassName
+  }
 classNames =
   { container: ClassName "container"
   , heatmap: ClassName "heatmap"
@@ -20,6 +36,7 @@ classNames =
   , filterLink: ClassName "filterLink"
   , deleteLink: ClassName "deleteLink"
   , deleteConfirmation: ClassName "deleteConfirmation"
+  , fileEpisode: ClassName "fileEpisode"
   , fileLink: ClassName "fileLink"
   , fileButton: ClassName "fileButton"
   , fileNote: ClassName "fileNote"
@@ -77,6 +94,8 @@ stylesheet = render do
   class_ classNames.deleteConfirmation ? do
     backgroundColor red
     color white
+  class_ classNames.fileEpisode ? do
+    width (px 50.0)
   class_ classNames.fileLink ? do
     flexGrow 1
     flexShrink 1

@@ -60,6 +60,9 @@
   background-color: hsl(0, 100%, 50%);
   color: hsl(0, 0%, 100%);
 }
+.fileEpisode {
+  width: 50px;
+}
 .fileLink {
   flex-grow: 1;
   flex-shrink: 1;

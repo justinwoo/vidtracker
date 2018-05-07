@@ -97,7 +97,7 @@ unE = either (H.liftAff <<< errorShow)
 
 data Dir = ASC | DSC
 derive instance eqDir :: Eq Dir
-data Col = Title | Status
+data Col = Title | Status | Episode
 derive instance eqCol :: Eq Col
 data Sorting = Sorting Col Dir | NoSorting
 
@@ -244,6 +244,10 @@ ui =
               , HE.onClick $ HE.input_ (ChangeSorting Title)
               ] [ HH.text $ "Title" <> displayTicker Title ]
             , HH.h3
+              [ HP.class_ $ classNames.fileEpisode
+              , HE.onClick $ HE.input_ (ChangeSorting Episode)
+              ] [ HH.text $ "No" <> displayTicker Episode ]
+            , HH.h3
               [ HP.class_ $ classNames.fileButton
               , HE.onClick $ HE.input_ (ChangeSorting Status)
               ] [ HH.text $ "Status" <> displayTicker Status ]
@@ -279,9 +283,13 @@ ui =
             else reverse
           , sort' <- case col of
             Title -> sort
+            Episode -> sortWith parseEpisodeNumber
             Status -> sortWith findWatched
           = rev <<< sort'
           | otherwise = id
+        parseEpisodeNumber (Path path) = case runParser nameParser path of
+          Right {episode} -> episode
+          Left _ -> "999"
         findWatched path = find (\(WatchedData fd) -> fd.path == path) state.watched
         file path =
           HH.div
@@ -299,6 +307,9 @@ ui =
               [ HP.class_ classNames.fileLink
               , HE.onClick $ HE.input_ (OpenFile path) ]
               [ HH.text $ unwrap path ]
+            , HH.span
+                [ HP.class_ $ classNames.fileEpisode ]
+                [ HH.text $ either (const "") _.episode $ runParser nameParser (unwrap path) ]
             , HH.button
               [ HP.classes $
                 [ classNames.fileButton
