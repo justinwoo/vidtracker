@@ -5,10 +5,8 @@ import Prelude
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Data.Array (fromFoldable)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(Right), isLeft)
-import Data.String (fromCharArray)
 import Global.Unsafe (unsafeStringify)
 import NameParser (nameParser)
 import Test.Unit (suite, test)
@@ -27,15 +25,18 @@ main :: forall e.
     Unit
 main = runTest do
   suite "nameParser" do
-    let testNameParser str = bimap unsafeStringify (fromCharArray <<< fromFoldable <<< _.result) $ unParser nameParser {str, pos: 0}
+    let testNameParser str = bimap unsafeStringify _.result $ unParser nameParser {str, pos: 0}
     test "works with valid names" do
       let
         str1 = "[HorribleSubs] BlahTastic - 01 [720p].mkv"
         str2 = "[HorribleSubs] Blah BlahTastic - Whatever - 01 [720p].mkv"
         str3 = "[HorribleSubs] Blah Blah BlahTastic - Legend of Blah - 01 [720p].mkv"
-      equal (Right "BlahTastic") (testNameParser str1)
-      equal (Right "Blah BlahTastic - Whatever") (testNameParser $ str2)
-      equal (Right "Blah Blah BlahTastic - Legend of Blah") (testNameParser str3)
+      equal (Right "BlahTastic") (_.name <$> testNameParser str1)
+      equal (Right "01") (_.episode <$> testNameParser str1)
+      equal (Right "Blah BlahTastic - Whatever") (_.name <$> testNameParser str2)
+      equal (Right "01") (_.episode <$> testNameParser str2)
+      equal (Right "Blah Blah BlahTastic - Legend of Blah") (_.name <$> testNameParser str3)
+      equal (Right "01") (_.episode <$> testNameParser str3)
     test "fails with invalid names" do
       let
         str1 = "[HorribleSuahTastic - 01 [720p].mkv"

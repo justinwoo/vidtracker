@@ -15,7 +15,7 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.MonadPlus (guard)
 import DOM (DOM)
-import Data.Array (filter, fromFoldable, reverse, sort, sortWith)
+import Data.Array (filter, reverse, sort, sortWith)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (MultipleErrors)
@@ -24,7 +24,7 @@ import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.Set (Set, insert, member)
-import Data.String (Pattern(Pattern), contains, fromCharArray, toLower)
+import Data.String (Pattern(Pattern), contains, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
@@ -48,12 +48,7 @@ import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Operation(..),
 
 extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s) =
-  bimap show (fromCharArray <<< filter' <<< fromFoldable) $ runParser nameParser s
-  where
-    filter' =
-      (=<<) case _ of
-        '.' -> mempty
-        x -> pure x
+  bimap show _.name $ runParser nameParser s
 
 type E a = Either MultipleErrors a
 

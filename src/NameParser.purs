@@ -2,25 +2,33 @@ module NameParser where
 
 import Prelude
 
-import Data.List (List)
-import Text.Parsing.StringParser (Parser, try)
-import Text.Parsing.StringParser.Combinators (many1Till)
-import Text.Parsing.StringParser.String (anyChar, anyDigit, char, string)
+import Data.Maybe (Maybe(..))
+import Data.String (Pattern(..), drop, dropRight, lastIndexOf, splitAt)
+import Data.String.Regex (test)
+import Data.String.Regex.Flags (noFlags)
+import Data.String.Regex.Unsafe (unsafeRegex)
+import Text.Parsing.StringParser (Parser, fail)
+import Text.Parsing.StringParser.String (char, regex)
 
-nameParser :: Parser (List Char)
+type Parsed =
+  { name :: String
+  , episode :: String
+  }
+
+nameParser :: Parser Parsed
 nameParser = do
-    thingInBrackets
-    _ <- char ' '
-    title <- many1Till anyChar endSequence
-    pure title
+  thingInBrackets
+  _ <- char ' '
+  title <- regex "[^\\[]+"
+  thingInBrackets
+  case splitAt <@> title =<< lastIndexOf (Pattern " - ") title of
+    Just {before, after} | test (unsafeRegex "^ - \\d+ " noFlags) after ->
+      pure { name: before, episode: dropRight 1 <<< drop 3 $ after }
+    Just {before, after} ->
+      fail $ "Invalid episode number: " <> after
+    Nothing ->
+      fail $ "Could not handle splitting of " <> title
   where
     thingInBrackets = do
-      _ <- char '['
-      _ <- many1Till anyChar (char ']')
-      pure unit
-    endSequence = try do
-      _ <- string " - "
-      _ <- many1Till anyDigit (char ' ')
-      thingInBrackets
-      _ <- char '.'
+      _ <- regex "\\[[^\\]]+\\]"
       pure unit
