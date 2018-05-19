@@ -1,8 +1,10 @@
 {
   "name": "vidtracker",
-  "set": "gulerodskage",
+  "set": "compiler/0.12",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
+    "halogen-css",
+    "web-dom",
     "sunde",
     "milkis",
     "debug",
@@ -14,7 +16,6 @@
     "bifunctors",
     "string-parsers",
     "aff",
-    "halogen-css",
     "now",
     "numbers",
     "gomtang-basic",

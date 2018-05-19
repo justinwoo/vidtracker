@@ -21,7 +21,7 @@ nameParser = do
   _ <- char ' '
   title <- regex "[^\\[]+"
   thingInBrackets
-  case splitAt <@> title =<< lastIndexOf (Pattern " - ") title of
+  case splitAt <@> title <$> lastIndexOf (Pattern " - ") title of
     Just {before, after} | test (unsafeRegex "^ - \\d+ " noFlags) after ->
       pure { name: before, episode: dropRight 1 <<< drop 3 $ after }
     Just {before, after} ->
