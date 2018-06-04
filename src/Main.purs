@@ -2,13 +2,11 @@ module Main where
 
 import Prelude
 
-import Chanpon (Table(..), createTableIfNotExists, deleteFrom, insertOrReplaceInto, selectAll)
 import Config as C
-import Control.Monad.Except (ExceptT, except, runExcept, runExceptT, throwError)
+import Control.Monad.Except (ExceptT, except, runExceptT, throwError)
 import Data.Array (filter, sortBy)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(Left, Right))
-import Data.JSDate (now, toISOString)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.String (Pattern(Pattern), contains)
@@ -19,7 +17,8 @@ import Effect (Effect)
 import Effect.Aff (Aff, attempt, launchAff_)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Effect.Console (log)
+import Effect.Class.Console (log)
+import Jajanmen as J
 import Makkori as M
 import Node.Buffer (Buffer, create, writeString)
 import Node.ChildProcess (Exit(..), defaultExecOptions, defaultSpawnOptions, exec, spawn)
@@ -33,6 +32,7 @@ import Prim.Row as Row
 import Record as Record
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, FilePath, newDB)
+import SQLite3 as SQL
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Sunde as Sunde
 import Tortellini (parsellIni)
@@ -48,9 +48,6 @@ prepareResult :: forall a. WriteForeign a => Either Error a -> {status :: Int, r
 prepareResult (Left (UserError error)) = {status: 400, response: writeJSON {error}}
 prepareResult (Left (ServerError error)) = {status: 500, response: writeJSON {error}}
 prepareResult (Right result) = {status: 200, response: writeJSON result}
-
-watchedTable :: Table
-watchedTable = Table "watched"
 
 readdir' :: String -> Aff (Array Path)
 readdir' path = do
@@ -85,8 +82,8 @@ class GetWatched m where
 
 instance gwA :: GetWatched (ExceptT Error Aff) where
   getWatchedData {db} = do
-    results <- liftAff $ selectAll watchedTable db
-    case runExcept $ sequence results of
+    results <- liftAff $ SQL.queryDB db "select * from watched" []
+    case read results of
       Right xs -> do
         pure $ WatchedData <$> xs
       Left e -> do
@@ -107,11 +104,14 @@ class UpdateWatched m where
 
 instance uwA :: UpdateWatched (ExceptT Error Aff) where
   updateWatched config@{db} (FileData ur) = do
+    let params = {"$path": unwrap ur.path}
     _ <- liftAff $ if ur.watched
       then do
-        now' <- liftEffect $ toISOString =<< now
-        insertOrReplaceInto watchedTable db {path: ur.path, created: now'}
-      else deleteFrom watchedTable db {path: ur.path}
+        let queryString = SProxy :: SProxy "insert or replace into watched (path, created) values ($path, datetime())"
+        void $ J.queryDB db queryString params
+      else do
+        let queryString = SProxy :: SProxy "delete from watched where path = $path"
+        void $ J.queryDB db queryString params
     getWatchedData config
 
 class OpenFile m where
@@ -126,7 +126,7 @@ instance ofA :: OpenFile (ExceptT Error Aff) where
         _ -> Nothing
     _ <- liftAff $ case simpleOpen of
           Just command -> liftEffect $ void $ spawn command (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
-          _ -> liftEffect $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
+          _ -> liftEffect $ void $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
     pure $ Operation {success: true}
 
 class RemoveFile m where
@@ -146,10 +146,7 @@ instance rfA :: RemoveFile (ExceptT Error Aff) where
 ensureDB :: FilePath -> Aff DBConnection
 ensureDB path = do
   db <- newDB path
-  createTableIfNotExists watchedTable db
-    { path: "text primary key unique"
-    , created: "datetime"
-    }
+  _ <- SQL.queryDB db "create table if not exists watched (path text primary key unique, created datetime)" []
   pure db
 
 registerRoutes :: forall routes handlers routesL handlersL app m
@@ -252,7 +249,7 @@ main :: Effect Unit
 main = launchAff_ do
   dir' <- parsellIni <$> readTextFile UTF8 "./config.ini"
   case dir' of
-    Left e -> liftEffect <<< log $ "We broke: " <> show e
+    Left e -> log $ "We broke: " <> show e
     Right ({vidtracker: {dir}} :: C.Config) -> do
       db <- ensureDB $ concat [dir, "filetracker"]
       let config = {db, dir}

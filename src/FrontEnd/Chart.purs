@@ -9,13 +9,12 @@ import Data.Array (group', intercalate)
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
 import Data.DateTime (adjust)
+import Data.DateTime as DT
 import Data.DateTime.Instant (toDateTime)
 import Data.Either (either)
-import Data.Formatter.DateTime (format)
-import Data.Formatter.DateTime as F
+import Data.Enum (fromEnum)
 import Data.Int (ceil)
 import Data.JSDate as JSDate
-import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Newtype (wrap)
 import Data.Number.Format (toString)
@@ -29,6 +28,8 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Record.Format as RF
+import Type.Prelude (SProxy(..))
 import Types (WatchedData(WatchedData))
 
 type Input = Array WatchedData
@@ -103,7 +104,7 @@ component =
       case heatmap of
         Just el -> do
           chart <- H.liftEffect $ Gom.makeChart el
-          H.modify _ {chart = Just chart}
+          H.modify_ _ {chart = Just chart}
         _ -> error' "can't find heatmap element?"
       eval (UpdateChart [] next)
 
@@ -119,7 +120,7 @@ component =
           , calculable: true
           }
       , calendar: Gom.makeCalendar
-          { range: format formatter <$> [a, b]
+          { range: formatDate <$> [a, b]
           , cellSize: ["auto", "auto"]
           }
       , series: pure $ Gom.makeHeatMapSeries $
@@ -131,10 +132,10 @@ component =
       where
         prepareSeriesData (ChartSeriesData {date, value}) =
           [date, show value]
-        formatter
-          = F.YearFull
-          : F.Placeholder "/"
-          : F.MonthTwoDigits
-          : F.Placeholder "/"
-          : F.DayOfMonthTwoDigits
-          : Nil
+        formatDate datetime
+          | d <- DT.date datetime
+          = RF.format (SProxy :: SProxy "{year}-{month}-{day}")
+              { year: show $ fromEnum (DT.year d)
+              , month: show $ fromEnum (DT.month d)
+              , day: show $ fromEnum (DT.day d)
+              }

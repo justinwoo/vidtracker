@@ -24,7 +24,7 @@ import Effect.Unsafe (unsafePerformEffect)
 import Foreign (MultipleErrors)
 import FrontEnd.Chart as Chart
 import FrontEnd.Style (classNames)
-import Global (encodeURIComponent)
+import Global.Unsafe (unsafeEncodeURIComponent)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
@@ -277,7 +277,7 @@ ui =
               , style do
                 case extractNameKinda path of
                   Right name ->
-                    backgroundImage (url $ "icons/" <> encodeURIComponent name)
+                    backgroundImage (url $ "icons/" <> unsafeEncodeURIComponent name)
                   Left e -> pure mempty
               ] []
             , HH.a
@@ -342,7 +342,7 @@ ui =
     eval (FetchData next) = do
       getResult >>= unE
         \(Tuple f w) -> do
-          H.modify _ {files = f, watched = w}
+          H.modify_ _ {files = f, watched = w}
       pure next
       where
         getResult = do
@@ -351,11 +351,11 @@ ui =
           pure $ Tuple <$> files <*> watched
 
     eval (GetIcons next) = do
-      H.modify _ {getIcons = Working}
+      H.modify_ _ {getIcons = Working}
       result <- post apiRoutes.getIcons $ GetIconsRequest {}
       case result of
-        Right (Operation {success}) | success -> H.modify _ {getIcons = Success}
-        _ -> H.modify _ {getIcons = Failure}
+        Right (Operation {success}) | success -> H.modify_ _ {getIcons = Success}
+        _ -> H.modify_ _ {getIcons = Failure}
       pure next
 
     eval (OpenFile path next) = do
@@ -364,7 +364,7 @@ ui =
 
     eval (SetWatched path flag next) = do
       post apiRoutes.update (FileData {path, watched: flag})
-        >>= unE \w -> H.modify _ {watched = w}
+        >>= unE \w -> H.modify_ _ {watched = w}
       pure next
 
     eval (Filter path next) = do
@@ -373,15 +373,15 @@ ui =
         Right s -> eval $ Search s next
 
     eval (Search str next) = do
-      H.modify _ {search = str}
+      H.modify_ _ {search = str}
       pure next
 
     eval (ClearSearch next) = do
-      H.modify _ {search = ""}
+      H.modify_ _ {search = ""}
       pure next
 
     eval (ChangeSorting col next)= do
-      H.modify $ \s -> case s.sorting of
+      H.modify_ $ \s -> case s.sorting of
         Sorting curr dir | curr == col ->
           s {sorting = case dir of
               ASC -> Sorting col DSC
@@ -391,11 +391,11 @@ ui =
       pure next
 
     eval (ToggleFilterWatched flag next) = do
-      H.modify _ {filterWatched = flag}
+      H.modify_ _ {filterWatched = flag}
       pure next
 
     eval (ConfirmDeletion path next) = do
-      H.modify \s -> s {deleteConfirmations = insert path s.deleteConfirmations}
+      H.modify_ \s -> s {deleteConfirmations = insert path s.deleteConfirmations}
       pure next
 
     eval (Delete path next) = do

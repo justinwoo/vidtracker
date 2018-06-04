@@ -3,7 +3,8 @@ module NameParser where
 import Prelude
 
 import Data.Maybe (Maybe(..))
-import Data.String (Pattern(..), drop, dropRight, lastIndexOf, splitAt)
+import Data.String (Pattern(..), drop, lastIndexOf, splitAt)
+import Data.String.CodeUnits (dropRight)
 import Data.String.Regex (test)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
