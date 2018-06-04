@@ -2,27 +2,17 @@ module Test.Main where
 
 import Prelude
 
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(Right), isLeft)
+import Effect (Effect)
 import Global.Unsafe (unsafeStringify)
 import NameParser (nameParser)
 import Test.Unit (suite, test)
 import Test.Unit.Assert (equal)
-import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 import Text.Parsing.StringParser (unParser)
 
-main :: forall e.
-  Eff
-    ( console :: CONSOLE
-    , testOutput :: TESTOUTPUT
-    , avar :: AVAR
-    | e
-    )
-    Unit
+main :: Effect Unit
 main = runTest do
   suite "nameParser" do
     let testNameParser str = bimap unsafeStringify _.result $ unParser nameParser {str, pos: 0}

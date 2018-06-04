@@ -3,34 +3,28 @@ module FrontEnd where
 import Prelude
 
 import CSS (backgroundImage, url)
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Aff.Console (CONSOLE, errorShow, log)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (error)
-import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Now (NOW)
-import Control.Monad.Eff.Ref (REF)
-import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.MonadPlus (guard)
-import DOM (DOM)
 import Data.Array (filter, reverse, sort, sortWith)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
-import Data.Foreign (MultipleErrors)
 import Data.JSDate as JSDate
 import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
-import Data.Monoid (mempty)
 import Data.Newtype (unwrap, wrap)
 import Data.Set (Set, insert, member)
 import Data.String (Pattern(Pattern), contains, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (find)
 import Data.Tuple (Tuple(..))
+import Effect (Effect)
+import Effect.Aff (Aff)
+import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Console (error, errorShow, log)
+import Effect.Unsafe (unsafePerformEffect)
+import Foreign (MultipleErrors)
 import FrontEnd.Chart as Chart
 import FrontEnd.Style (classNames)
-import Global (encodeURIComponent)
+import Global.Unsafe (unsafeEncodeURIComponent)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
@@ -52,10 +46,9 @@ extractNameKinda (Path s) =
 
 type E a = Either MultipleErrors a
 
-get :: forall res url m eff.
-  MonadAff
-    eff
-    m
+get
+  :: forall res url m
+   . MonadAff m
   => ReadForeign res
   => IsSymbol url
   => GetRoute res url -> m (E res)
@@ -66,10 +59,9 @@ get _ =
     fetch = M.fetch windowFetch
     action = M.json =<< fetch (M.URL url) M.defaultFetchOptions
 
-post :: forall method req res url m eff.
-  MonadAff
-    eff
-    m
+post
+  :: forall req res url m
+   . MonadAff m
   => WriteForeign req
   => ReadForeign res
   => IsSymbol url
@@ -86,14 +78,8 @@ post _ body =
       }
     action = M.json =<< fetch (M.URL url) options
 
-unE :: forall e a m.
-  MonadAff
-    ( console :: CONSOLE
-    | e
-    )
-    m
-  => (a -> m Unit) -> E a -> m Unit
-unE = either (H.liftAff <<< errorShow)
+unE :: forall a m. MonadEffect m => (a -> m Unit) -> E a -> m Unit
+unE = either (liftEffect <<< errorShow)
 
 data Dir = ASC | DSC
 derive instance eqDir :: Eq Dir
@@ -137,19 +123,11 @@ data Query a
   | ConfirmDeletion Path a
   | Delete Path a
 
-type AppEffects eff =
-  Aff
-  ( console :: CONSOLE
-  , dom :: DOM
-  , exception :: EXCEPTION
-  , now :: NOW
-  | eff )
-
 data Slot = ChartSlot
 derive instance eqSlot :: Eq Slot
 derive instance ordSlot :: Ord Slot
 
-ui :: forall eff. H.Component HH.HTML Query Unit Void (AppEffects eff)
+ui :: H.Component HH.HTML Query Unit Void Aff
 ui =
   H.lifecycleParentComponent
     { initialState: const initialState
@@ -171,7 +149,7 @@ ui =
       , getIcons: Standby
       }
 
-    render :: State -> H.ParentHTML Query Chart.Query Slot (AppEffects eff)
+    render :: State -> H.ParentHTML Query Chart.Query Slot Aff
     render state =
       HH.div
         [ HP.class_ $ classNames.container ]
@@ -272,21 +250,21 @@ ui =
         applyTransforms = applySorting <<< applySearchFiltering <<< applyWatchFiltering
         applyWatchFiltering = if state.filterWatched
           then filter $ isNothing <<< findWatched
-          else id
+          else identity
         applySearchFiltering = case state.search of
-            "" -> id
+            "" -> identity
             x -> filter $ \(Path path) -> contains (Pattern $ toLower x) (toLower path)
         applySorting
           | Sorting col dir <- state.sorting
           , rev <- if dir == ASC
-            then id
+            then identity
             else reverse
           , sort' <- case col of
             Title -> sort
             Episode -> sortWith parseEpisodeNumber
             Status -> sortWith findWatched
           = rev <<< sort'
-          | otherwise = id
+          | otherwise = identity
         parseEpisodeNumber (Path path) = case runParser nameParser path of
           Right {episode} -> episode
           Left _ -> "999"
@@ -299,9 +277,8 @@ ui =
               , style do
                 case extractNameKinda path of
                   Right name ->
-                    backgroundImage (url $ "icons/" <> encodeURIComponent name)
+                    backgroundImage (url $ "icons/" <> unsafeEncodeURIComponent name)
                   Left e -> pure mempty
-                -- borderColor $ fromMaybe (rgb 255 105 180) dotColor
               ] []
             , HH.a
               [ HP.class_ classNames.fileLink
@@ -321,7 +298,7 @@ ui =
               [ HH.text $ maybe "not watched" (const "watched") watched ]
             , HH.span
               [ HP.class_ $ classNames.fileNote ]
-              [ HH.text $ maybe "" id watched ]
+              [ HH.text $ maybe "" identity watched ]
             , HH.button
               [ HP.classes $
                 [ classNames.filterLink
@@ -354,18 +331,18 @@ ui =
             deleteConfirmation = member path state.deleteConfirmations
             getDate (WatchedData {created}) =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
-              JSDate.toDateString <<< unsafePerformEff <<< JSDate.parse $ created
+              JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ created
 
-    error' = H.liftEff <<< error
+    error' = H.liftEffect <<< error
 
-    eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void (AppEffects eff)
+    eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void Aff
     eval (Init next) = do
       eval (FetchData next)
 
     eval (FetchData next) = do
       getResult >>= unE
         \(Tuple f w) -> do
-          H.modify _ {files = f, watched = w}
+          H.modify_ _ {files = f, watched = w}
       pure next
       where
         getResult = do
@@ -374,11 +351,11 @@ ui =
           pure $ Tuple <$> files <*> watched
 
     eval (GetIcons next) = do
-      H.modify _ {getIcons = Working}
+      H.modify_ _ {getIcons = Working}
       result <- post apiRoutes.getIcons $ GetIconsRequest {}
       case result of
-        Right (Operation {success}) | success -> H.modify _ {getIcons = Success}
-        _ -> H.modify _ {getIcons = Failure}
+        Right (Operation {success}) | success -> H.modify_ _ {getIcons = Success}
+        _ -> H.modify_ _ {getIcons = Failure}
       pure next
 
     eval (OpenFile path next) = do
@@ -387,7 +364,7 @@ ui =
 
     eval (SetWatched path flag next) = do
       post apiRoutes.update (FileData {path, watched: flag})
-        >>= unE \w -> H.modify _ {watched = w}
+        >>= unE \w -> H.modify_ _ {watched = w}
       pure next
 
     eval (Filter path next) = do
@@ -396,15 +373,15 @@ ui =
         Right s -> eval $ Search s next
 
     eval (Search str next) = do
-      H.modify _ {search = str}
+      H.modify_ _ {search = str}
       pure next
 
     eval (ClearSearch next) = do
-      H.modify _ {search = ""}
+      H.modify_ _ {search = ""}
       pure next
 
     eval (ChangeSorting col next)= do
-      H.modify $ \s -> case s.sorting of
+      H.modify_ $ \s -> case s.sorting of
         Sorting curr dir | curr == col ->
           s {sorting = case dir of
               ASC -> Sorting col DSC
@@ -414,30 +391,20 @@ ui =
       pure next
 
     eval (ToggleFilterWatched flag next) = do
-      H.modify _ {filterWatched = flag}
+      H.modify_ _ {filterWatched = flag}
       pure next
 
     eval (ConfirmDeletion path next) = do
-      H.modify \s -> s {deleteConfirmations = insert path s.deleteConfirmations}
+      H.modify_ \s -> s {deleteConfirmations = insert path s.deleteConfirmations}
       pure next
 
     eval (Delete path next) = do
       _ <- post apiRoutes.remove $ RemoveRequest {path}
       eval (FetchData next)
 
-main :: forall e.
-  Eff
-    ( avar :: AVAR
-    , ref :: REF
-    , exception :: EXCEPTION
-    , dom :: DOM
-    , console :: CONSOLE
-    , now :: NOW
-    | e
-    )
-    Unit
+main :: Effect Unit
 main = HA.runHalogenAff do
   body <- HA.awaitBody
   io <- D.runUI ui unit body
 
-  log "Running"
+  liftEffect <<< log $ "Running"

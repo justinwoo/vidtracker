@@ -2,37 +2,34 @@ module FrontEnd.Chart where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Console (CONSOLE)
-import Control.Monad.Eff.Console (error)
-import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Now (NOW, now)
-import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Trans.Class (lift)
-import DOM (DOM)
-import DOM.Node.Types (readElement)
-import Data.Array (group', intercalate, length)
+import Data.Array (group', intercalate)
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NEA
 import Data.DateTime (adjust)
+import Data.DateTime as DT
 import Data.DateTime.Instant (toDateTime)
-import Data.Either (Either(..), either)
-import Data.Formatter.DateTime (format)
-import Data.Formatter.DateTime as F
+import Data.Either (either)
+import Data.Enum (fromEnum)
 import Data.Int (ceil)
 import Data.JSDate as JSDate
-import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Newtype (wrap)
-import Data.NonEmpty (NonEmpty, head, oneOf)
 import Data.Number.Format (toString)
 import Data.Time.Duration (Days(..))
+import Effect.Aff (Aff)
+import Effect.Console (error)
+import Effect.Now (now)
+import Effect.Unsafe (unsafePerformEffect)
 import Gomtang.Basic as Gom
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Record.Format as RF
+import Type.Prelude (SProxy(..))
 import Types (WatchedData(WatchedData))
 
 type Input = Array WatchedData
@@ -52,15 +49,7 @@ data Query a
   = Init a
   | UpdateChart (Array WatchedData) a
 
-type Effects eff =
-  Aff
-  ( console :: CONSOLE
-  , dom :: DOM
-  , exception :: EXCEPTION
-  , now :: NOW
-  | eff )
-
-component :: forall eff. H.Component HH.HTML Query Input Void (Effects eff)
+component :: H.Component HH.HTML Query Input Void Aff
 component =
   H.lifecycleComponent
     { initialState
@@ -84,38 +73,38 @@ component =
         , HP.class_ $ wrap "heatmap"]
         []
 
-    error' = H.liftEff <<< error
+    error' = H.liftEffect <<< error
 
     updateChart' w = do
       result <- runExceptT do
         chart <- note "couldn't find existing chart instance" =<< lift (H.gets _.chart)
         now <- lift $ toDateTime <$> now'
         back <- note "somehow calculating time is too hard" $ adjust (Days (-120.0)) now
-        H.liftEff $ Gom.setOption (options back now series) chart
+        H.liftEffect $ Gom.setOption (options back now series) chart
       either error' pure result
       where
         note :: forall m e. MonadThrow e m => e -> Maybe ~> m
         note s = maybe (throwError s) pure
-        now' = H.liftEff now
+        now' = H.liftEffect now
         series = ChartSeries $ makeData <$> group' (extractMonth <$> w)
-        makeData :: NonEmpty Array String -> ChartSeriesData
-        makeData xs = ChartSeriesData { date: head xs, value: length $ oneOf xs }
+        makeData :: NonEmptyArray String -> ChartSeriesData
+        makeData xs = ChartSeriesData { date: NEA.head xs, value: NEA.length xs }
         extractMonth :: WatchedData -> String
         extractMonth (WatchedData {created}) =
-           unsafePerformEff <<< (prepareDateString <=< JSDate.parse) $ created
+           unsafePerformEffect <<< (prepareDateString <=< JSDate.parse) $ created
         prepareDateString jsdate = do
           year <- toString <$> JSDate.getFullYear jsdate
           month <- show <$> (+) 1 <<< ceil <$> JSDate.getMonth jsdate
           date <- toString <$> JSDate.getDate jsdate
           pure $ intercalate "-" [year, month, date]
 
-    eval :: Query ~> H.ComponentDSL State Query Void (Effects eff)
+    eval :: Query ~> H.ComponentDSL State Query Void Aff
     eval (Init next) = do
       heatmap <- H.getRef (wrap "heatmap")
-      case runExcept <<< readElement <$> heatmap of
-        Just (Right el) -> do
-          chart <- H.liftEff $ Gom.makeChart el
-          H.modify _ {chart = Just chart}
+      case heatmap of
+        Just el -> do
+          chart <- H.liftEffect $ Gom.makeChart el
+          H.modify_ _ {chart = Just chart}
         _ -> error' "can't find heatmap element?"
       eval (UpdateChart [] next)
 
@@ -131,7 +120,7 @@ component =
           , calculable: true
           }
       , calendar: Gom.makeCalendar
-          { range: format formatter <$> [a, b]
+          { range: formatDate <$> [a, b]
           , cellSize: ["auto", "auto"]
           }
       , series: pure $ Gom.makeHeatMapSeries $
@@ -143,10 +132,10 @@ component =
       where
         prepareSeriesData (ChartSeriesData {date, value}) =
           [date, show value]
-        formatter
-          = F.YearFull
-          : F.Placeholder "/"
-          : F.MonthTwoDigits
-          : F.Placeholder "/"
-          : F.DayOfMonthTwoDigits
-          : Nil
+        formatDate datetime
+          | d <- DT.date datetime
+          = RF.format (SProxy :: SProxy "{year}-{month}-{day}")
+              { year: show $ fromEnum (DT.year d)
+              , month: show $ fromEnum (DT.month d)
+              , day: show $ fromEnum (DT.day d)
+              }
