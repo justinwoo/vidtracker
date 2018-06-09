@@ -1,8 +1,9 @@
 {
   "name": "vidtracker",
-  "set": "wasabi",
+  "set": "dolma",
   "source": "https://github.com/justinwoo/package-sets.git",
   "depends": [
+    "shoronpo",
     "record-format",
     "halogen-css",
     "web-dom",

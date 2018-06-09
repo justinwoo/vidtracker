@@ -33,12 +33,13 @@ import Record as Record
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, FilePath, newDB)
 import SQLite3 as SQL
+import Shoronpo (formatSymbol, intercalateRecordLabels, intercalateRowLabels, intercalateRowValues)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Sunde as Sunde
 import Tortellini (parsellIni)
-import Type.Prelude (class RowToList, RLProxy(RLProxy))
+import Type.Prelude (class RowToList, Proxy(..), RLProxy(RLProxy))
 import Type.Row (Cons, Nil, kind RowList)
-import Types (FileData(FileData), GetIconsRequest, OpenRequest(OpenRequest), Path(Path), RemoveRequest(RemoveRequest), Operation(Operation), WatchedData(..))
+import Types (FileData, GetIconsRequest, OpenRequest, Operation, Path(Path), RemoveRequest, WatchedData)
 
 data Error
   = ServerError String
@@ -82,10 +83,14 @@ class GetWatched m where
 
 instance gwA :: GetWatched (ExceptT Error Aff) where
   getWatchedData {db} = do
-    results <- liftAff $ SQL.queryDB db "select * from watched" []
+    let
+      template = SProxy :: SProxy "select {columns} from watched"
+      query = formatSymbol template
+        { columns: intercalateRecordLabels (Proxy :: Proxy WatchedData) (SProxy :: SProxy ", ") }
+    results <- liftAff $ J.queryDB db query {}
     case read results of
       Right xs -> do
-        pure $ WatchedData <$> xs
+        pure xs
       Left e -> do
         throwError <<< ServerError $ "getWatchedData:" <> show e
 
@@ -96,19 +101,28 @@ instance giA :: GetIcons (ExceptT Error Aff) where
   getIconsData {db} _ = do
     result <- liftAff $ Sunde.spawn "node" ["get-icons.js"] defaultSpawnOptions
     pure $ case result.exit of
-      Normally 0 -> Operation {success: true}
-      _ -> Operation {success: false}
+      Normally 0 -> {success: true}
+      _ -> {success: false}
 
 class UpdateWatched m where
   updateWatched :: Config -> FileData -> m (Array WatchedData)
 
 instance uwA :: UpdateWatched (ExceptT Error Aff) where
-  updateWatched config@{db} (FileData ur) = do
+  updateWatched config@{db} ur = do
     let params = {"$path": unwrap ur.path}
     _ <- liftAff $ if ur.watched
       then do
-        let queryString = SProxy :: SProxy "insert or replace into watched (path, created) values ($path, datetime())"
-        void $ J.queryDB db queryString params
+        let
+          fields =
+            { path: SProxy :: SProxy "$path"
+            , created: SProxy :: SProxy "datetime()"
+            }
+          template = SProxy :: SProxy "insert or replace into watched ({fields}) values ({values})"
+          query = formatSymbol template
+            { fields: intercalateRowLabels fields (SProxy :: SProxy ", ")
+            , values: intercalateRowValues fields (SProxy :: SProxy ", ")
+            }
+        void $ J.queryDB db query params
       else do
         let queryString = SProxy :: SProxy "delete from watched where path = $path"
         void $ J.queryDB db queryString params
@@ -118,7 +132,7 @@ class OpenFile m where
   openFile :: Config -> OpenRequest -> m (Operation)
 
 instance ofA :: OpenFile (ExceptT Error Aff) where
-  openFile {dir} (OpenRequest or) = do
+  openFile {dir} or = do
     let
       simpleOpen = case platform of
         Just Linux -> Just "xdg-open"
@@ -127,13 +141,13 @@ instance ofA :: OpenFile (ExceptT Error Aff) where
     _ <- liftAff $ case simpleOpen of
           Just command -> liftEffect $ void $ spawn command (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
           _ -> liftEffect $ void $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
-    pure $ Operation {success: true}
+    pure $ {success: true}
 
 class RemoveFile m where
   removeFile :: Config -> RemoveRequest -> m (Operation)
 
 instance rfA :: RemoveFile (ExceptT Error Aff) where
-  removeFile {dir} (RemoveRequest rr) = do
+  removeFile {dir} rr = do
     let archive = concat [dir, "archive"]
     let name = unwrap rr.path
     let old = concat [dir, name]
@@ -141,7 +155,7 @@ instance rfA :: RemoveFile (ExceptT Error Aff) where
     _ <- liftAff $ do
       void $ attempt $ mkdir archive
       void $ attempt $ rename old new
-    pure $ Operation {success: true}
+    pure $ {success: true}
 
 ensureDB :: FilePath -> Aff DBConnection
 ensureDB path = do

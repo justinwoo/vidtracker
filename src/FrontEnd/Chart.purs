@@ -30,7 +30,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Record.Format as RF
 import Type.Prelude (SProxy(..))
-import Types (WatchedData(WatchedData))
+import Types (WatchedData)
 
 type Input = Array WatchedData
 
@@ -90,7 +90,7 @@ component =
         makeData :: NonEmptyArray String -> ChartSeriesData
         makeData xs = ChartSeriesData { date: NEA.head xs, value: NEA.length xs }
         extractMonth :: WatchedData -> String
-        extractMonth (WatchedData {created}) =
+        extractMonth {created} =
            unsafePerformEffect <<< (prepareDateString <=< JSDate.parse) $ created
         prepareDateString jsdate = do
           year <- toString <$> JSDate.getFullYear jsdate

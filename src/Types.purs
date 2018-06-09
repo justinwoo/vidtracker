@@ -12,41 +12,30 @@ derive instance ntPath :: Newtype Path _
 derive newtype instance isPath :: ReadForeign Path
 derive newtype instance asPath :: WriteForeign Path
 
-newtype GetIconsRequest = GetIconsRequest
+type GetIconsRequest =
   {}
-derive newtype instance ifGIR :: ReadForeign GetIconsRequest
-derive newtype instance afGIR :: WriteForeign GetIconsRequest
 
-newtype RemoveRequest = RemoveRequest
+type RemoveRequest =
   { path :: Path
   }
-derive newtype instance ifRR :: ReadForeign RemoveRequest
-derive newtype instance afRR :: WriteForeign RemoveRequest
 
-newtype OpenRequest = OpenRequest
+type OpenRequest =
   { path :: Path
   }
-derive newtype instance ifOR :: ReadForeign OpenRequest
-derive newtype instance afOR :: WriteForeign OpenRequest
 
-newtype FileData = FileData
+type FileData =
   { path :: Path
   , watched :: Boolean
   }
-derive newtype instance ifFD :: ReadForeign FileData
-derive newtype instance afFD :: WriteForeign FileData
 
-newtype WatchedData = WatchedData
+type WatchedData =
   { path :: Path
   , created :: String
   }
-derive instance eqWD :: Eq WatchedData
-derive instance ordWD :: Ord WatchedData
-derive newtype instance ifWD :: ReadForeign WatchedData
-derive newtype instance afWD :: WriteForeign WatchedData
+newtype SortableWatchedData = SortableWatchedData WatchedData
+derive instance eqSortableWD :: Eq SortableWatchedData
+derive instance ordSortableWD :: Ord SortableWatchedData
 
-newtype Operation = Operation
+type Operation =
   { success :: Boolean
   }
-derive newtype instance ifSC :: ReadForeign Operation
-derive newtype instance afSC :: WriteForeign Operation

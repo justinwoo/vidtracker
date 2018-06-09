@@ -38,7 +38,7 @@ import NameParser (nameParser)
 import Routes (GetRoute, PostRoute, apiRoutes)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Text.Parsing.StringParser (runParser)
-import Types (FileData(..), GetIconsRequest(..), OpenRequest(..), Operation(..), Path(..), RemoveRequest(..), WatchedData(..))
+import Types (Path(..), WatchedData)
 
 extractNameKinda :: Path -> Either String String
 extractNameKinda (Path s) =
@@ -262,13 +262,14 @@ ui =
           , sort' <- case col of
             Title -> sort
             Episode -> sortWith parseEpisodeNumber
-            Status -> sortWith findWatched
+            Status -> sortWith (map _.created <<< findWatched)
+            _ -> identity
           = rev <<< sort'
           | otherwise = identity
         parseEpisodeNumber (Path path) = case runParser nameParser path of
           Right {episode} -> episode
           Left _ -> "999"
-        findWatched path = find (\(WatchedData fd) -> fd.path == path) state.watched
+        findWatched path = find (\fd -> fd.path == path) state.watched
         file path =
           HH.div
             [ HP.class_ $ classNames.file ]
@@ -329,7 +330,7 @@ ui =
           where
             watched = getDate <$> findWatched path
             deleteConfirmation = member path state.deleteConfirmations
-            getDate (WatchedData {created}) =
+            getDate {created} =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ created
 
@@ -352,18 +353,18 @@ ui =
 
     eval (GetIcons next) = do
       H.modify_ _ {getIcons = Working}
-      result <- post apiRoutes.getIcons $ GetIconsRequest {}
+      result <- post apiRoutes.getIcons {}
       case result of
-        Right (Operation {success}) | success -> H.modify_ _ {getIcons = Success}
+        Right {success} | success -> H.modify_ _ {getIcons = Success}
         _ -> H.modify_ _ {getIcons = Failure}
       pure next
 
     eval (OpenFile path next) = do
-      _ <- post apiRoutes.open $ OpenRequest {path}
+      _ <- post apiRoutes.open {path}
       pure next
 
     eval (SetWatched path flag next) = do
-      post apiRoutes.update (FileData {path, watched: flag})
+      post apiRoutes.update {path, watched: flag}
         >>= unE \w -> H.modify_ _ {watched = w}
       pure next
 
@@ -399,7 +400,7 @@ ui =
       pure next
 
     eval (Delete path next) = do
-      _ <- post apiRoutes.remove $ RemoveRequest {path}
+      _ <- post apiRoutes.remove {path}
       eval (FetchData next)
 
 main :: Effect Unit
