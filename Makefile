@@ -3,6 +3,7 @@ build: deps
 
 deps:
 	npm install
+	psc-package install
 
 watch:
 	parcel build/index.js

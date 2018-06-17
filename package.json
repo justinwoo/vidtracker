@@ -7,7 +7,6 @@
     "test": "test"
   },
   "scripts": {
-    "postinstall": "psc-package install",
     "test": "psc-package build -- test && node -e 'require(\"./output/Test.Main\").main()' ",
     "build:get-icons": "purs bundle './output/*/*.js' -m GetIcons --main GetIcons -o get-icons.js",
     "build:be": "purs bundle './output/*/*.js' -m Main --main Main -o index.js",
@@ -23,11 +22,11 @@
     "express": "^4.16.3",
     "node-fetch": "^2.1.2",
     "open": "^0.0.5",
-    "prettier": "^1.12.1",
+    "prettier": "^1.13.5",
     "sqlite3": "^4.0.0"
   },
   "devDependencies": {
-    "parcel-bundler": "^1.8.1"
+    "parcel-bundler": "^1.9.1"
   },
   "engines": {
     "node": ">=8.0.0",
