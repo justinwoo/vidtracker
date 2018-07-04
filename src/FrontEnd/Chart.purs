@@ -20,7 +20,7 @@ import Data.Newtype (wrap)
 import Data.Number.Format (toString)
 import Data.Time.Duration (Days(..))
 import Effect.Aff (Aff)
-import Effect.Console (error)
+import Effect.Class.Console (error)
 import Effect.Now (now)
 import Effect.Unsafe (unsafePerformEffect)
 import Gomtang.Basic as Gom
@@ -73,15 +73,13 @@ component =
         , HP.class_ $ wrap "heatmap"]
         []
 
-    error' = H.liftEffect <<< error
-
     updateChart' w = do
       result <- runExceptT do
         chart <- note "couldn't find existing chart instance" =<< lift (H.gets _.chart)
         now <- lift $ toDateTime <$> now'
         back <- note "somehow calculating time is too hard" $ adjust (Days (-120.0)) now
         H.liftEffect $ Gom.setOption (options back now series) chart
-      either error' pure result
+      either error pure result
       where
         note :: forall m e. MonadThrow e m => e -> Maybe ~> m
         note s = maybe (throwError s) pure
@@ -105,7 +103,7 @@ component =
         Just el -> do
           chart <- H.liftEffect $ Gom.makeChart el
           H.modify_ _ {chart = Just chart}
-        _ -> error' "can't find heatmap element?"
+        _ -> error "can't find heatmap element?"
       eval (UpdateChart [] next)
 
     eval (UpdateChart w next) = do

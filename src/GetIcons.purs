@@ -13,7 +13,7 @@ import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, makeAff)
 import Effect.Class (liftEffect)
-import Effect.Console (error, log)
+import Effect.Class.Console (error, log)
 import Effect.Exception as Exc
 import FrontEnd (extractNameKinda)
 import Global.Unsafe (unsafeStringify)
@@ -40,16 +40,16 @@ curl url path = do
 downloadIconIfNotExist :: IconsConfig -> Set String -> String -> Aff Unit
 downloadIconIfNotExist config existing name =
   unless (member name existing) do
-    liftEffect <<< log $ "gonna get " <> name
+    log $ "gonna get " <> name
     html <- M.text =<< M.fetch nodeFetch (M.URL $ config.queryUrl <> name) M.defaultFetchOptions
     case extractFirstImage =<<
       (lmap (append "couldn't get tags " <<< show) (parseTags html)) of
       Right url -> do
-        liftEffect <<< log $ "downloading from " <> url
+        log $ "downloading from " <> url
         curl url (iconsPath <> "/" <> name)
         pure unit
       Left e ->
-        liftEffect $ error e
+        error e
   where
     matchSrc (Attribute (Name n) _) = n == "src"
     extractFirstImage tags =
@@ -77,6 +77,6 @@ main = launchAff_ do
         readdir dir
       existing <- fromFoldable <$> readdir iconsPath
       for_ names $ downloadIconIfNotExist config' existing
-      liftEffect <<< log $ "finished"
+      log $ "finished"
       pure unit
-    Left e -> liftEffect <<< error $ "Error: " <> show e
+    Left e -> error $ "Error: " <> show e

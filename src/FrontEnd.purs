@@ -18,8 +18,8 @@ import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Console (error, errorShow, log)
+import Effect.Class (class MonadEffect)
+import Effect.Class.Console (error, errorShow, log)
 import Effect.Unsafe (unsafePerformEffect)
 import Foreign (MultipleErrors)
 import FrontEnd.Chart as Chart
@@ -79,7 +79,7 @@ post _ body =
     action = M.json =<< fetch (M.URL url) options
 
 unE :: forall a m. MonadEffect m => (a -> m Unit) -> E a -> m Unit
-unE = either (liftEffect <<< errorShow)
+unE = either errorShow
 
 data Dir = ASC | DSC
 derive instance eqDir :: Eq Dir
@@ -334,8 +334,6 @@ ui =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ created
 
-    error' = H.liftEffect <<< error
-
     eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void Aff
     eval (Init next) = do
       eval (FetchData next)
@@ -370,7 +368,7 @@ ui =
 
     eval (Filter path next) = do
       case extractNameKinda path of
-        Left e -> error' e *> pure next
+        Left e -> error e *> pure next
         Right s -> eval $ Search s next
 
     eval (Search str next) = do
@@ -408,4 +406,4 @@ main = HA.runHalogenAff do
   body <- HA.awaitBody
   io <- D.runUI ui unit body
 
-  liftEffect <<< log $ "Running"
+  log $ "Running"

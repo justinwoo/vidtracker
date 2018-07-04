@@ -6,8 +6,7 @@ import CSS (renderedSheet)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (launchAff_)
-import Effect.Class (liftEffect)
-import Effect.Console (error, log)
+import Effect.Class.Console (error, log)
 import FrontEnd.Style (stylesheet)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (writeTextFile)
@@ -19,6 +18,6 @@ main = launchAff_ do
     Just result
       | formatted <- format (defaultOptions {parser = CSS}) result -> do
       writeTextFile UTF8 "./dist/style.css" formatted
-      liftEffect <<< log $ "rendered stylesheet"
+      log $ "rendered stylesheet"
     Nothing -> do
-      liftEffect <<< error $ "error rendering stylesheet"
+      error $ "error rendering stylesheet"
