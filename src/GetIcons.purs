@@ -15,7 +15,6 @@ import Effect.Class (liftEffect)
 import Effect.Class.Console (error, log)
 import Effect.Exception as Exc
 import FrontEnd (extractNameKinda)
-import Global.Unsafe (unsafeStringify)
 import Node.ChildProcess (defaultSpawnOptions, onClose, onError, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile, readdir)
@@ -31,7 +30,7 @@ curl :: String -> String -> Aff Unit
 curl url path = do
   cp <- liftEffect $ spawn "curl" ["-L", url, "-o", path] defaultSpawnOptions
   makeAff \cb -> do
-    onError cp (cb <<< Left <<< Exc.error <<< unsafeStringify)
+    onError cp (cb <<< Left <<< Exc.error <<< show)
     onClose cp (cb <<< Right <<< const unit)
     pure mempty
 

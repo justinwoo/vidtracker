@@ -5,7 +5,6 @@ import Prelude
 import Data.Bifunctor (bimap)
 import Data.Either (Either(Right), isLeft)
 import Effect (Effect)
-import Global.Unsafe (unsafeStringify)
 import NameParser (nameParser)
 import Test.Unit (suite, test)
 import Test.Unit.Assert (equal)
@@ -15,7 +14,7 @@ import Text.Parsing.StringParser (unParser)
 main :: Effect Unit
 main = runTest do
   suite "nameParser" do
-    let testNameParser str = bimap unsafeStringify _.result $ unParser nameParser {str, pos: 0}
+    let testNameParser str = bimap show _.result $ unParser nameParser {str, pos: 0}
     test "works with valid names" do
       let
         str1 = "[HorribleSubs] BlahTastic - 01 [720p].mkv"
