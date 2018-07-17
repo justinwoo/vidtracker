@@ -1,7 +1,7 @@
 {
   "name": "vidtracker",
-  "set": "dolma",
-  "source": "https://github.com/justinwoo/package-sets.git",
+  "set": "040718",
+  "source": "https://github.com/justinwoo/spacchetti.git",
   "depends": [
     "aff",
     "bifunctors",
