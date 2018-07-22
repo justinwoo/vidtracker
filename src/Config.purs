@@ -6,4 +6,5 @@ type Config =
 
 type VidtrackerConfig =
   { dir :: String
+  , exe :: String
   }

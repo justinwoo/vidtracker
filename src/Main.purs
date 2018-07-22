@@ -70,6 +70,7 @@ getBuffer size json = do
 type Config =
   { db :: DBConnection
   , dir :: String
+  , exe :: String
   }
 
 class GetFiles m where
@@ -132,12 +133,13 @@ class OpenFile m where
   openFile :: Config -> OpenRequest -> m (Operation)
 
 instance ofA :: OpenFile (ExceptT Error Aff) where
-  openFile {dir} or = do
+  openFile {dir, exe} or = do
     let
-      simpleOpen = case platform of
-        Just Linux -> Just "xdg-open"
-        Just Darwin -> Just "open"
-        _ -> Nothing
+      simpleOpen = case exe, platform of
+        exe', _ | exe' /= "" -> Just exe'
+        _, Just Linux -> Just "xdg-open"
+        _, Just Darwin -> Just "open"
+        _, _ -> Nothing
     _ <- liftAff $ case simpleOpen of
           Just command -> liftEffect $ void $ spawn command (pure $ concat [dir, unwrap or.path]) defaultSpawnOptions
           _ -> liftEffect $ void $ exec ("start \"\" \"rust-vlc-finder\" \"" <> concat [dir, unwrap or.path] <>  "\"") defaultExecOptions (const $ pure unit)
@@ -264,9 +266,9 @@ main = launchAff_ do
   dir' <- parsellIni <$> readTextFile UTF8 "./config.ini"
   case dir' of
     Left e -> log $ "We broke: " <> show e
-    Right ({vidtracker: {dir}} :: C.Config) -> do
-      db <- ensureDB $ concat [dir, "filetracker"]
-      let config = {db, dir}
+    Right ({vidtracker} :: C.Config) -> do
+      db <- ensureDB $ concat [vidtracker.dir, "filetracker"]
+      let config = Record.merge vidtracker {db}
       app <- liftEffect M.makeApp
 
       middlewares <- liftEffect $ sequence

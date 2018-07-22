@@ -15,17 +15,16 @@ a simple "full-stack" purescript application to keep track of videos watched and
 ## Requirements:
 
 * sqlite3
-* rust-vlc-finder: https://github.com/justinwoo/rust-vlc-finder
+* on Windows: rust-vlc-finder: https://github.com/justinwoo/rust-vlc-finder
 * a config.ini that contains...
     * location of your videos
-    * icons-config with secret url (ask me)
+    * the executable you will use
 
 Like so:
 ```
 [vidtracker]
 dir=/home/user/Videos
-[icons]
-queryUrl=https://myurl
+exe=vlc
 ```
 
 Screenshot:
