@@ -165,60 +165,48 @@ ensureDB path = do
   _ <- SQL.queryDB db "create table if not exists watched (path text primary key unique, created datetime)" []
   pure db
 
-registerRoutes :: forall routes handlers routesL handlersL app m
+registerRoutes :: forall routes handlers routesL
    . RowToList routes routesL
-  => RowToList handlers handlersL
-  => Monad m
-  => RoutesHandlers routesL handlersL routes handlers app m
+  => RoutesHandlers routesL routes handlers
   => Record routes
   -> Record handlers
-  -> app
-  -> m Unit
-registerRoutes routes handlers app =
-  registerRoutesImpl
-    (RLProxy :: RLProxy routesL)
-    (RLProxy :: RLProxy handlersL)
-    routes
-    handlers
-    app
+  -> M.App
+  -> Effect Unit
+registerRoutes = registerRoutesImpl (RLProxy :: RLProxy routesL)
 
 class RoutesHandlers
   (routesL :: RowList)
-  (handlersL :: RowList)
   (routes :: # Type)
   (handlers :: # Type)
-  app
-  m
+  | routesL -> routes handlers
   where
     registerRoutesImpl :: forall proxy
-       . Monad m
-      => proxy routesL
-      -> proxy handlersL
+       . proxy routesL
       -> Record routes
       -> Record handlers
-      -> app
-      -> m Unit
+      -> M.App
+      -> Effect Unit
 
-instance routesHandlersNil :: RoutesHandlers Nil Nil trash1 trash2 app m where
-  registerRoutesImpl _ _ _ _ _ = pure unit
+instance routesHandlersNil :: RoutesHandlers Nil routes handlers where
+  registerRoutesImpl _ _ _ _ = pure unit
 
 instance routesHandlersCons ::
-  ( RoutesHandlers rTail hTail routes handlers app m
+  ( RoutesHandlers tail routes handlers
   , IsSymbol name
-  , Row.Cons name handler trash1 handlers
-  , Row.Cons name route trash2 routes
-  , RegisterHandler route handler app m
-  ) => RoutesHandlers (Cons name route rTail) (Cons name handler hTail) routes handlers app m where
-  registerRoutesImpl _ _ routes handlers app = do
+  , Row.Cons name handler handlers' handlers
+  , Row.Cons name route routes' routes
+  , RegisterHandler route handler
+  ) => RoutesHandlers (Cons name route tail) routes handlers where
+  registerRoutesImpl _ routes handlers app = do
     registerHandlerImpl (Record.get nameP routes) (Record.get nameP handlers) app
-    registerRoutesImpl (RLProxy :: RLProxy rTail) (RLProxy :: RLProxy hTail) routes handlers app
+    registerRoutesImpl (RLProxy :: RLProxy tail) routes handlers app
     where
       nameP = SProxy :: SProxy name
 
-class RegisterHandler route handler app m
-  | route -> handler app m
+class RegisterHandler route handler
+  | route -> handler
   where
-    registerHandlerImpl :: route -> handler -> app -> m Unit
+    registerHandlerImpl :: route -> handler -> M.App -> Effect Unit
 
 instance registerHandlerPost ::
   ( IsSymbol url
@@ -227,10 +215,9 @@ instance registerHandlerPost ::
   ) => RegisterHandler
          (Route PostRequest req res url)
          (req -> ExceptT Error Aff res)
-         M.App
-         Aff where
+         where
   registerHandlerImpl route handler app =
-    liftEffect $ M.post (M.Path route') (M.makeHandler handler') app
+    M.post (M.Path route') (M.makeHandler handler') app
     where
       route' = reflectSymbol (SProxy :: SProxy url)
       handler' req res = do
@@ -249,10 +236,9 @@ instance registerHandlerGet ::
   ) => RegisterHandler
          (Route GetRequest Void res url)
          (ExceptT Error Aff res)
-         M.App
-         Aff where
+         where
   registerHandlerImpl route handler app =
-    liftEffect $ M.get (M.Path route') (M.makeHandler handler') app
+    M.get (M.Path route') (M.makeHandler handler') app
     where
       route' = reflectSymbol (SProxy :: SProxy url)
       handler' _ res = launchAff_ do
@@ -269,24 +255,26 @@ main = launchAff_ do
     Right ({vidtracker} :: C.Config) -> do
       db <- ensureDB $ concat [vidtracker.dir, "filetracker"]
       let config = Record.merge vidtracker {db}
-      app <- liftEffect M.makeApp
+      _ <- liftEffect do
+        app <- M.makeApp
 
-      middlewares <- liftEffect $ sequence
-        [ M.makeJSONMiddleware {}
-        , M.makeStaticMiddleware (M.Path "dist") {}
-        ]
-      liftEffect $ traverse_ (flip (M.use (M.Path "/")) app) middlewares
+        middlewares <- sequence
+          [ M.makeJSONMiddleware {}
+          , M.makeStaticMiddleware (M.Path "dist") {}
+          ]
+        traverse_ (flip (M.use (M.Path "/")) app) middlewares
 
-      registerRoutes
-        apiRoutes
-        { files: getFiles config
-        , watched: getWatchedData config
-        , getIcons: getIconsData config
-        , update: updateWatched config
-        , open: openFile config
-        , remove: removeFile config
-        }
-        app
+        registerRoutes
+          apiRoutes
+          { files: getFiles config
+          , watched: getWatchedData config
+          , getIcons: getIconsData config
+          , update: updateWatched config
+          , open: openFile config
+          , remove: removeFile config
+          }
+          app
 
-      _ <- liftEffect $ M.listen (M.Port 3000) (log "Started server") app
+        _ <- M.listen (M.Port 3000) (log "Started server") app
+        pure unit
       pure unit
