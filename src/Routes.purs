@@ -2,6 +2,11 @@ module Routes where
 
 import Prelude
 
+import Prim.Row as Row
+import Prim.RowList as RL
+import Record.Builder (Builder)
+import Record.Builder as Builder
+import Type.Prelude (class IsSymbol, RLProxy(..), SProxy(..))
 import Types (FileData, GetIconsRequest, OpenRequest, Path, RemoveRequest, Operation, WatchedData)
 
 foreign import kind RequestMethod
@@ -21,11 +26,33 @@ apiRoutes ::
   , open :: PostRoute OpenRequest Operation "/api/open"
   , remove :: PostRoute RemoveRequest Operation "/api/remove"
   }
-apiRoutes =
-  { files: Route
-  , watched: Route
-  , getIcons: Route
-  , update: Route
-  , open: Route
-  , remove: Route
-  }
+apiRoutes = reflectRecordProxy
+
+class ReflectRecordProxy a where
+  reflectRecordProxy :: a
+
+instance reflectRecordProxyInst ::
+  ( RL.RowToList r rl
+  , ReflectRecordProxyBuilder rl () r
+  ) => ReflectRecordProxy { | r } where
+  reflectRecordProxy = Builder.build builder {}
+    where
+      builder = reflectRecordProxyBuilder (RLProxy :: RLProxy rl)
+
+class ReflectRecordProxyBuilder (rl :: RL.RowList) (i :: # Type) (o :: # Type)
+  | rl -> i o where
+  reflectRecordProxyBuilder :: RLProxy rl -> Builder { | i } { | o }
+
+instance reflectRecordProxyBuilderNil :: ReflectRecordProxyBuilder RL.Nil () () where
+  reflectRecordProxyBuilder _ = identity
+
+instance reflectRecordProxyBuilderConsRoute ::
+  ( ReflectRecordProxyBuilder tail from from'
+  , Row.Lacks name from'
+  , Row.Cons name (Route a b c d) from' to
+  , IsSymbol name
+  ) => ReflectRecordProxyBuilder (RL.Cons name (Route a b c d) tail) from to where
+  reflectRecordProxyBuilder _ = first <<< rest
+    where
+      first = Builder.insert (SProxy :: SProxy name) Route
+      rest = reflectRecordProxyBuilder (RLProxy :: RLProxy tail)
