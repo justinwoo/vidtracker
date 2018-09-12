@@ -9,7 +9,7 @@ import Data.String.Regex (test)
 import Data.String.Regex.Flags (noFlags)
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Text.Parsing.StringParser (Parser, fail)
-import Text.Parsing.StringParser.String (char, regex)
+import Text.Parsing.StringParser.CodeUnits (char, regex)
 
 type Parsed =
   { name :: String

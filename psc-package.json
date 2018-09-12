@@ -1,6 +1,6 @@
 {
   "name": "vidtracker",
-  "set": "040718",
+  "set": "120918",
   "source": "https://github.com/justinwoo/spacchetti.git",
   "depends": [
     "aff",
@@ -15,6 +15,7 @@
     "lenient-html-parser",
     "makkori",
     "milkis",
+    "naporitan",
     "node-child-process",
     "node-fs-aff",
     "node-process",
