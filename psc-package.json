@@ -1,7 +1,7 @@
 {
-  "name": "vidtracker",
-  "set": "120918",
-  "source": "https://github.com/justinwoo/spacchetti.git",
+  "name": "my-project",
+  "set": "local",
+  "source": "",
   "depends": [
     "aff",
     "bifunctors",
