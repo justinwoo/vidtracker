@@ -123,13 +123,13 @@ data Query a
   | ConfirmDeletion Path a
   | Delete Path a
 
-data Slot = ChartSlot
-derive instance eqSlot :: Eq Slot
-derive instance ordSlot :: Ord Slot
+type ChildSlots =
+  ( chart :: Chart.Slot Unit
+  )
 
 ui :: H.Component HH.HTML Query Unit Void Aff
 ui =
-  H.lifecycleParentComponent
+  H.component
     { initialState: const initialState
     , render
     , eval
@@ -149,7 +149,7 @@ ui =
       , getIcons: Standby
       }
 
-    render :: State -> H.ParentHTML Query Chart.Query Slot Aff
+    render :: State -> H.ComponentHTML Query ChildSlots Aff
     render state =
       HH.div
         [ HP.class_ $ classNames.container ]
@@ -163,7 +163,7 @@ ui =
           ] <> files
       where
         heatmap =
-          HH.slot ChartSlot Chart.component state.watched absurd
+          HH.slot (SProxy :: SProxy "chart") unit Chart.component state.watched absurd
         refreshButton =
           HH.button
             [ HP.classes $
@@ -334,7 +334,7 @@ ui =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
               JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ created
 
-    eval :: Query ~> H.ParentDSL State Query Chart.Query Slot Void Aff
+    eval :: Query ~> H.HalogenM State Query ChildSlots Void Aff
     eval (Init next) = do
       eval (FetchData next)
 

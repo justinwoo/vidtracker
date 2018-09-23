@@ -49,9 +49,11 @@ data Query a
   = Init a
   | UpdateChart (Array WatchedData) a
 
+type Slot = H.Slot Query Void
+
 component :: H.Component HH.HTML Query Input Void Aff
 component =
-  H.lifecycleComponent
+  H.component
     { initialState
     , render
     , eval
@@ -61,12 +63,12 @@ component =
     }
   where
     initialState :: Input -> State
-    initialState =
+    initialState watched =
       { chart: Nothing
-      , watched: _
+      , watched
       }
 
-    render :: State -> H.ComponentHTML Query
+    render :: State -> H.ComponentHTML Query () Aff
     render state =
       HH.div
         [ HP.ref $ wrap "heatmap"
@@ -96,7 +98,7 @@ component =
           date <- toString <$> JSDate.getDate jsdate
           pure $ intercalate "-" [year, month, date]
 
-    eval :: Query ~> H.ComponentDSL State Query Void Aff
+    eval :: Query ~> H.HalogenM State Query () Void Aff
     eval (Init next) = do
       heatmap <- H.getRef (wrap "heatmap")
       case heatmap of
