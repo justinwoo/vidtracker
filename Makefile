@@ -1,4 +1,4 @@
-build: deps
+build: insdhall deps
 	npm run build
 
 deps:
