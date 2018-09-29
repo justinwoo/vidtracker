@@ -376,9 +376,8 @@ ui =
       pure next
 
     eval (SetWatched path flag next) = do
-      post apiRoutes.update {path, watched: flag}
-        >>= unE \w -> H.modify_ _ {watched = w}
-      pure next
+      _ <- post apiRoutes.update {path, watched: flag}
+      eval (FetchData next)
 
     eval (Filter name next) = do
       case name of
