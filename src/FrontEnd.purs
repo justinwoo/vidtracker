@@ -4,24 +4,20 @@ import Prelude
 
 import CSS (backgroundImage, url)
 import Control.MonadPlus (guard)
-import Data.Array (filter, reverse, sort, sortWith)
-import Data.Bifunctor (bimap)
-import Data.Either (Either(..), either)
+import Data.Array as Array
+import Data.Either (Either(..), either, hush)
 import Data.JSDate as JSDate
-import Data.Maybe (Maybe(Nothing, Just), isJust, isNothing, maybe)
+import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap, wrap)
 import Data.Set (Set, insert, member)
 import Data.String (Pattern(Pattern), contains, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
-import Data.Traversable (find)
-import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Effect.Class.Console (error, errorShow, log)
 import Effect.Unsafe (unsafePerformEffect)
-import Foreign (MultipleErrors)
 import FrontEnd.Chart as Chart
 import FrontEnd.Style (classNames)
 import Global.Unsafe (unsafeEncodeURIComponent)
@@ -36,24 +32,18 @@ import Milkis as M
 import Milkis.Impl.Window (windowFetch)
 import NameParser (nameParser)
 import Routes (GetRoute, PostRoute, apiRoutes)
-import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
+import Simple.JSON as JSON
 import Text.Parsing.StringParser (runParser)
 import Types (Path(..), WatchedData)
-
-extractNameKinda :: Path -> Either String String
-extractNameKinda (Path s) =
-  bimap show _.name $ runParser nameParser s
-
-type E a = Either MultipleErrors a
 
 get
   :: forall res url m
    . MonadAff m
-  => ReadForeign res
+  => JSON.ReadForeign res
   => IsSymbol url
-  => GetRoute res url -> m (E res)
+  => GetRoute res url -> m (JSON.E res)
 get _ =
-  H.liftAff $ read <$> action
+  H.liftAff $ JSON.read <$> action
   where
     url = reflectSymbol (SProxy :: SProxy url)
     fetch = M.fetch windowFetch
@@ -62,28 +52,28 @@ get _ =
 post
   :: forall req res url m
    . MonadAff m
-  => WriteForeign req
-  => ReadForeign res
+  => JSON.WriteForeign req
+  => JSON.ReadForeign res
   => IsSymbol url
-  => PostRoute req res url -> req -> m (E res)
+  => PostRoute req res url -> req -> m (JSON.E res)
 post _ body =
-  H.liftAff $ read <$> action
+  H.liftAff $ JSON.read <$> action
   where
     url = reflectSymbol (SProxy :: SProxy url)
     fetch = M.fetch windowFetch
     options =
       { method: M.postMethod
       , headers: M.makeHeaders { "Content-Type": "application/json" }
-      , body: writeJSON body
+      , body: JSON.writeJSON body
       }
     action = M.json =<< fetch (M.URL url) options
 
-unE :: forall a m. MonadEffect m => (a -> m Unit) -> E a -> m Unit
+unE :: forall a m. MonadEffect m => (a -> m Unit) -> JSON.E a -> m Unit
 unE = either errorShow
 
 data Dir = ASC | DSC
 derive instance eqDir :: Eq Dir
-data Col = Title | Status | Episode
+data Col = TitleEpisode | Status
 derive instance eqCol :: Eq Col
 data Sorting = Sorting Col Dir | NoSorting
 
@@ -100,7 +90,7 @@ data RemoteTaskState
   | Failure
 
 type State =
-  { files :: Array Path
+  { fileData :: Array FileData
   , watched :: Array WatchedData
   , filterWatched :: Boolean
   , sorting :: Sorting
@@ -109,13 +99,32 @@ type State =
   , getIcons :: RemoteTaskState
   }
 
+type FileData =
+  { path :: Path
+  , name :: Maybe String
+  , episode :: Maybe String
+  , created :: Maybe String
+  }
+
+prepareFilesData :: Array Path -> Array WatchedData -> Array FileData
+prepareFilesData paths watchedData =
+  go <$> paths
+  where
+    go path@(Path pathString) = do
+      let parsed = hush $ runParser nameParser pathString
+      { path
+      , created: _.created <$> Array.find (\x -> x.path == path) watchedData
+      , name: _.name <$> parsed
+      , episode: _.episode <$> parsed
+      }
+
 data Query a
   = Init a
   | FetchData a
   | GetIcons a
   | OpenFile Path a
   | SetWatched Path Boolean a
-  | Filter Path a
+  | Filter (Maybe String) a
   | ChangeSorting Col a
   | Search String a
   | ClearSearch a
@@ -140,7 +149,7 @@ ui =
   where
     initialState :: State
     initialState =
-      { files: mempty
+      { fileData: mempty
       , watched: mempty
       , filterWatched: false
       , sorting: NoSorting
@@ -219,12 +228,12 @@ ui =
               ] []
             , HH.h3
               [ HP.class_ $ classNames.fileLink
-              , HE.onClick $ HE.input_ (ChangeSorting Title)
-              ] [ HH.text $ "Title" <> displayTicker Title ]
+              , HE.onClick $ HE.input_ (ChangeSorting TitleEpisode)
+              ] [ HH.text $ "Title" <> displayTicker TitleEpisode ]
             , HH.h3
               [ HP.class_ $ classNames.fileEpisode
-              , HE.onClick $ HE.input_ (ChangeSorting Episode)
-              ] [ HH.text $ "No" <> displayTicker Episode ]
+              , HE.onClick $ HE.input_ (ChangeSorting TitleEpisode)
+              ] []
             , HH.h3
               [ HP.class_ $ classNames.fileButton
               , HE.onClick $ HE.input_ (ChangeSorting Status)
@@ -237,8 +246,7 @@ ui =
               [ HP.class_ $ classNames.deleteLink
               ] [ HH.text "" ]
             ]
-        files =
-          file <$> applyTransforms state.files
+        files = file <$> applyTransforms state.fileData
 
         displayTicker col
           | Sorting col' dir <- state.sorting
@@ -247,39 +255,44 @@ ui =
             then " ASC"
             else " DSC"
           | otherwise = ""
-        applyTransforms = applySorting <<< applySearchFiltering <<< applyWatchFiltering
+        applyTransforms
+            = applySorting
+          <<< applySearchFiltering
+          <<< applyWatchFiltering
         applyWatchFiltering = if state.filterWatched
-          then filter $ isNothing <<< findWatched
+          then Array.filter $ isNothing <<< _.created
           else identity
         applySearchFiltering = case state.search of
             "" -> identity
-            x -> filter $ \(Path path) -> contains (Pattern $ toLower x) (toLower path)
+            x -> Array.filter $ \{ path: Path path } -> contains (Pattern $ toLower x) (toLower path)
         applySorting
           | Sorting col dir <- state.sorting
           , rev <- if dir == ASC
             then identity
-            else reverse
+            else Array.reverse
           , sort' <- case col of
-            Title -> sort
-            Episode -> sortWith parseEpisodeNumber
-            Status -> sortWith (map _.created <<< findWatched)
+            TitleEpisode -> \xs -> do
+              let
+                grouped = Array.groupBy (\{name: nameA} {name: nameB} -> nameA == nameB) xs
+                sorted = Array.sortWith _.episode <<< Array.fromFoldable <$> grouped
+              join sorted
+            Status -> Array.sortWith _.created
             _ -> identity
           = rev <<< sort'
           | otherwise = identity
-        parseEpisodeNumber (Path path) = case runParser nameParser path of
+        parseEpisodeNumber { path: Path path } = case runParser nameParser path of
           Right {episode} -> episode
           Left _ -> "999"
-        findWatched path = find (\fd -> fd.path == path) state.watched
-        file path =
+        file { path, created, name, episode } =
           HH.div
             [ HP.class_ $ classNames.file ]
             [ HH.span
               [ HP.class_ $ classNames.dot
               , style do
-                case extractNameKinda path of
-                  Right name ->
-                    backgroundImage (url $ "icons/" <> unsafeEncodeURIComponent name)
-                  Left e -> pure mempty
+                case name of
+                  Just s ->
+                    backgroundImage (url $ "icons/" <> unsafeEncodeURIComponent s)
+                  Nothing -> pure mempty
               ] []
             , HH.a
               [ HP.class_ classNames.fileLink
@@ -287,25 +300,25 @@ ui =
               [ HH.text $ unwrap path ]
             , HH.span
                 [ HP.class_ $ classNames.fileEpisode ]
-                [ HH.text $ either (const "") _.episode $ runParser nameParser (unwrap path) ]
+                [ HH.text $ fromMaybe "" episode ]
             , HH.button
               [ HP.classes $
                 [ classNames.fileButton
                 , wrap "pure-button"
-                , wrap $ maybe "" (const "pure-button-primary") watched
+                , wrap $ maybe "" (const "pure-button-primary") watchedDate
                 ]
-              , HE.onClick $ HE.input_ (SetWatched path (not $ isJust watched))
+              , HE.onClick $ HE.input_ (SetWatched path (not $ isJust watchedDate))
               ]
-              [ HH.text $ maybe "not watched" (const "watched") watched ]
+              [ HH.text $ maybe "not watched" (const "watched") watchedDate ]
             , HH.span
               [ HP.class_ $ classNames.fileNote ]
-              [ HH.text $ maybe "" identity watched ]
+              [ HH.text $ maybe "" identity watchedDate ]
             , HH.button
               [ HP.classes $
                 [ classNames.filterLink
                 , wrap "pure-button"
                 ]
-              , HE.onClick $ HE.input_ (Filter path)
+              , HE.onClick $ HE.input_ (Filter name)
               ]
               [ HH.text "set filter" ]
             , HH.button
@@ -328,11 +341,11 @@ ui =
               ]
             ]
           where
-            watched = getDate <$> findWatched path
+            watchedDate = getDate <$> created
             deleteConfirmation = member path state.deleteConfirmations
-            getDate {created} =
+            getDate dateString =
               -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
-              JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ created
+              JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ dateString
 
     eval :: Query ~> H.HalogenM State Query ChildSlots Void Aff
     eval (Init next) = do
@@ -340,14 +353,15 @@ ui =
 
     eval (FetchData next) = do
       getResult >>= unE
-        \(Tuple f w) -> do
-          H.modify_ _ {files = f, watched = w}
+        \{filesData: fd, watched: w} -> do
+          H.modify_ _ {fileData = fd, watched = w}
       pure next
       where
         getResult = do
           files <- get apiRoutes.files
           watched <- get apiRoutes.watched
-          pure $ Tuple <$> files <*> watched
+          let filesData = prepareFilesData <$> files <*> watched
+          pure $ { filesData: _, watched: _ } <$> filesData <*> watched
 
     eval (GetIcons next) = do
       H.modify_ _ {getIcons = Working}
@@ -366,10 +380,10 @@ ui =
         >>= unE \w -> H.modify_ _ {watched = w}
       pure next
 
-    eval (Filter path next) = do
-      case extractNameKinda path of
-        Left e -> error e *> pure next
-        Right s -> eval $ Search s next
+    eval (Filter name next) = do
+      case name of
+        Nothing -> error "Can't filter by unknown name" *> pure next
+        Just s -> eval $ Search s next
 
     eval (Search str next) = do
       H.modify_ _ {search = str}
