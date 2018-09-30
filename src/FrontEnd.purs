@@ -273,7 +273,8 @@ ui =
           , sort' <- case col of
             TitleEpisode -> \xs -> do
               let
-                grouped = Array.groupBy (\{name: nameA} {name: nameB} -> nameA == nameB) xs
+                preGroup = Array.sortWith _.name xs
+                grouped = Array.groupBy (\{name: nameA} {name: nameB} -> nameA == nameB) preGroup
                 sorted = Array.sortWith _.episode <<< Array.fromFoldable <$> grouped
               join sorted
             Status -> Array.sortWith _.created
