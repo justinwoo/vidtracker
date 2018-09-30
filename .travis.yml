@@ -2,8 +2,22 @@ language: node_js
 sudo: required
 dist: trusty
 node_js: stable
+env:
+  - PATH=./bin:$HOME/bin:$PATH
 install:
-  - npm install -g purescript pulp psc-package
+  - DHALL=https://github.com/dhall-lang/dhall-haskell/releases/download/1.17.0/dhall-1.17.0-x86_64-linux.tar.bz2
+  - DHALL_JSON=https://github.com/dhall-lang/dhall-json/releases/download/1.2.3/dhall-json-1.2.3-x86_64-linux.tar.bz2
+  - SPACCHETTI=https://github.com/justinwoo/spacchetti-cli/releases/download/sh-compat-test/linux.tar.gz
+  - wget -O $HOME/dhall.tar.gz $DHALL
+  - wget -O $HOME/dhall-json.tar.gz $DHALL_JSON
+  - wget -O $HOME/spacchetti.tar.gz $SPACCHETTI
+  - tar -xvf $HOME/dhall.tar.gz -C $HOME/
+  - tar -xvf $HOME/dhall-json.tar.gz -C $HOME/
+  - tar -xvf $HOME/spacchetti.tar.gz -C $HOME/bin
+  - chmod a+x $HOME/bin
+  - npm install -g purescript pulp psc-package-bin-simple
 script:
-  - psc-package install
-  - pulp build
+  - which dhall
+  - which dhall-to-json
+  - which spacchetti
+  - make

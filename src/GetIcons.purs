@@ -3,8 +3,8 @@ module GetIcons where
 import Prelude
 
 import Config (Config)
-import Control.Bind (bindFlipped)
-import Data.Either (Either(..), either)
+import Data.Array as Array
+import Data.Either (Either(..), hush)
 import Data.Set (Set, fromFoldable, member)
 import Data.String as S
 import Data.Traversable (for_)
@@ -14,14 +14,14 @@ import Effect.Aff as Aff
 import Effect.Class (liftEffect)
 import Effect.Class.Console (error, log)
 import Effect.Exception as Exc
-import FrontEnd (extractNameKinda)
+import NameParser (nameParser)
 import Node.ChildProcess (defaultSpawnOptions, onClose, onError, spawn)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile, readdir)
 import Simple.JSON as JSON
+import Text.Parsing.StringParser (runParser)
 import Toppokki as T
 import Tortellini (parsellIni)
-import Types (Path(..))
 
 iconsPath :: String
 iconsPath = "./dist/icons"
@@ -63,9 +63,13 @@ main = launchAff_ do
     aff config browser = do
       case config of
         (Right ({vidtracker: {dir}} :: Config)) -> do
-          names :: Set String <- fromFoldable <$>
-            bindFlipped (either (const mempty) pure <<< extractNameKinda <<< Path) <$>
-            readdir dir
+          -- names :: Set String <- fromFoldable <$>
+          --   bindFlipped (either (const mempty) pure <<< extractNameKinda <<< Path) <$>
+          --   readdir dir
+          paths <- readdir dir
+          let
+            results = Array.mapMaybe (hush <<< runParser nameParser) paths
+            (names :: Set String) = fromFoldable (_.name <$> results)
           existing <- fromFoldable <$> readdir iconsPath
           for_ names $ downloadIconIfNotExist browser existing
           log $ "finished"
