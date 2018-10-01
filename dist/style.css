@@ -85,3 +85,16 @@ a:hover {
   cursor: pointer;
   background-color: hsla(60, 100%, 50%, 0.25);
 }
+.top {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: row;
+}
+.topLeft {
+  flex-grow: 1;
+  width: 50%;
+}
+.topRight {
+  flex-grow: 1;
+  width: 50%;
+}

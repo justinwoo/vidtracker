@@ -104,18 +104,30 @@ type FileData =
   , name :: Maybe String
   , episode :: Maybe String
   , created :: Maybe String
+  , dateString :: Maybe String
+  , jsDate :: Maybe JSDate.JSDate
   }
+
+getDate :: String -> JSDate.JSDate
+getDate dateString =
+  -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
+  unsafePerformEffect <<< JSDate.parse $ dateString
 
 prepareFilesData :: Array Path -> Array WatchedData -> Array FileData
 prepareFilesData paths watchedData =
   go <$> paths
   where
     go path@(Path pathString) = do
-      let parsed = hush $ runParser nameParser pathString
+      let
+        parsed = hush $ runParser nameParser pathString
+        created = _.created <$> Array.find (\x -> x.path == path) watchedData
+        jsDate = getDate <$> created
       { path
-      , created: _.created <$> Array.find (\x -> x.path == path) watchedData
+      , created
       , name: _.name <$> parsed
       , episode: _.episode <$> parsed
+      , dateString: JSDate.toDateString <$> jsDate
+      , jsDate
       }
 
 data Query a
@@ -164,13 +176,26 @@ ui =
         [ HP.class_ $ classNames.container ]
         $ [ HH.h1_ [ HH.text "Vidtracker" ]
           , heatmap
-          , refreshButton
-          , getIconsButton
-          , filterCheckbox
-          , search
+          , HH.div
+              [ HP.class_ classNames.top ]
+              [ HH.div [ HP.class_ classNames.topLeft ]
+                  [ refreshButton
+                  , getIconsButton
+                  , filterCheckbox
+                  , search
+                  ]
+              , HH.div [ HP.class_ classNames.topRight ] recentHistory
+              ]
           , header
           ] <> files
       where
+        recentHistory = do
+          let
+            recents
+              = Array.take 5 <<< Array.reverse <<< Array.sortWith _.jsDate
+              $ Array.filter (isJust <<< _.jsDate) state.fileData
+            list = recents <#> \x -> HH.div_ [ HH.text (unwrap x.path) ]
+          [ HH.h4_ [ HH.text "Recently watched:" ] ] <> list
         heatmap =
           HH.slot (SProxy :: SProxy "chart") unit Chart.component state.watched absurd
         refreshButton =
@@ -284,7 +309,7 @@ ui =
         parseEpisodeNumber { path: Path path } = case runParser nameParser path of
           Right {episode} -> episode
           Left _ -> "999"
-        file { path, created, name, episode } =
+        file { path, created, name, episode, dateString } =
           HH.div
             [ HP.class_ $ classNames.file ]
             [ HH.span
@@ -306,14 +331,14 @@ ui =
               [ HP.classes $
                 [ classNames.fileButton
                 , wrap "pure-button"
-                , wrap $ maybe "" (const "pure-button-primary") watchedDate
+                , wrap $ maybe "" (const "pure-button-primary") dateString
                 ]
-              , HE.onClick $ HE.input_ (SetWatched path (not $ isJust watchedDate))
+              , HE.onClick $ HE.input_ (SetWatched path (not $ isJust dateString))
               ]
-              [ HH.text $ maybe "not watched" (const "watched") watchedDate ]
+              [ HH.text $ maybe "not watched" (const "watched") dateString ]
             , HH.span
               [ HP.class_ $ classNames.fileNote ]
-              [ HH.text $ maybe "" identity watchedDate ]
+              [ HH.text $ fromMaybe "" dateString ]
             , HH.button
               [ HP.classes $
                 [ classNames.filterLink
@@ -342,11 +367,7 @@ ui =
               ]
             ]
           where
-            watchedDate = getDate <$> created
             deleteConfirmation = member path state.deleteConfirmations
-            getDate dateString =
-              -- parsing date is UTZ dependent (ergo effectful), but in our case, we really don't care
-              JSDate.toDateString <<< unsafePerformEffect <<< JSDate.parse $ dateString
 
     eval :: Query ~> H.HalogenM State Query ChildSlots Void Aff
     eval (Init next) = do

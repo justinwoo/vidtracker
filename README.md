@@ -29,4 +29,4 @@ exe=vlc
 
 Screenshot:
 
-![](http://i.imgur.com/ijyaVcM.png)
+![](https://i.imgur.com/yqeKoq5.png)

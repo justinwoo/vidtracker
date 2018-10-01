@@ -4,6 +4,7 @@ import CSS
 
 import CSS as CSS
 import CSS.Common (auto, center)
+import CSS.Flexbox (flexDirection)
 import Halogen (ClassName(..))
 import Prelude (discard, ($), (<>))
 
@@ -23,6 +24,9 @@ classNames ::
   , fileLink :: ClassName
   , fileButton :: ClassName
   , fileNote :: ClassName
+  , top :: ClassName
+  , topLeft :: ClassName
+  , topRight :: ClassName
   }
 classNames =
   { container: ClassName "container"
@@ -40,6 +44,9 @@ classNames =
   , fileLink: ClassName "fileLink"
   , fileButton: ClassName "fileButton"
   , fileNote: ClassName "fileNote"
+  , top: ClassName "top"
+  , topLeft: ClassName "topLeft"
+  , topRight: ClassName "topRight"
   }
 
 class_ :: forall a. IsString a => ClassName -> a
@@ -113,6 +120,16 @@ stylesheet = render do
     textDecoration underline
     cursor "pointer"
     backgroundColor (rgba 255 255 0 0.25)
+  class_ classNames.top ? do
+    marginTop (px 10.0)
+    display flex
+    flexDirection row
+  class_ classNames.topLeft ? do
+    flexGrow 1
+    width (pct 50.0)
+  class_ classNames.topRight ? do
+    flexGrow 1
+    width (pct 50.0)
   where
     opacity = key $ fromString "opacity"
     userSelect = key $ fromString "user-select"
