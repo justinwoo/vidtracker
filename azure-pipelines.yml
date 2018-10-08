@@ -8,24 +8,28 @@ steps:
     DHALL_TAG=1.17.0
     DHALL_JSON_TAG=1.2.3
     SPACCHETTI_TAG=0.2.0.0
+    PURP_TAG=0.1.0.0
 
     PURESCRIPT=https://github.com/purescript/purescript/releases/download/$PURESCRIPT_TAG/linux64.tar.gz
     PSC_PACKAGE=https://github.com/purescript/psc-package/releases/download/$PSC_PACKAGE_TAG/linux64.tar.gz
     DHALL=https://github.com/dhall-lang/dhall-haskell/releases/download/$DHALL_TAG/dhall-1.17.0-x86_64-linux.tar.bz2
     DHALL_JSON=https://github.com/dhall-lang/dhall-json/releases/download/$DHALL_JSON_TAG/dhall-json-1.2.3-x86_64-linux.tar.bz2
     SPACCHETTI=https://github.com/justinwoo/spacchetti-cli/releases/download/$SPACCHETTI_TAG/linux.tar.gz
+    PURP=https://github.com/justinwoo/purp/releases/download/$PURP_TAG/linux.tar.gz
 
     wget -O $HOME/purescript.tar.gz $PURESCRIPT
     wget -O $HOME/psc-package.tar.gz $PSC_PACKAGE
     wget -O $HOME/dhall.tar.gz $DHALL
     wget -O $HOME/dhall-json.tar.gz $DHALL_JSON
     wget -O $HOME/spacchetti.tar.gz $SPACCHETTI
+    wget -O $HOME/purp.tar.gz $PURP
 
     tar -xvf $HOME/dhall.tar.gz -C $HOME/
     tar -xvf $HOME/dhall-json.tar.gz -C $HOME/
     tar -xvf $HOME/psc-package.tar.gz -C $HOME/
     tar -xvf $HOME/purescript.tar.gz -C $HOME/
     tar -xvf $HOME/spacchetti.tar.gz -C $HOME/bin
+    tar -xvf $HOME/purp.tar.gz -C $HOME/bin
 
     mv $HOME/purescript/* $HOME/bin
     mv $HOME/psc-package/* $HOME/bin
@@ -40,6 +44,7 @@ steps:
     which dhall
     which dhall-to-json
     which spacchetti
+    which purp
 
     make
   displayName: 'Make'
