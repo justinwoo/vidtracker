@@ -7,13 +7,13 @@
     "test": "test"
   },
   "scripts": {
-    "test": "psc-package build -- test/Main.purs && node -e 'require(\"./output/Test.Main\").main()' ",
-    "build:get-icons": "purs bundle './output/*/*.js' -m GetIcons --main GetIcons -o get-icons.js",
-    "build:be": "purs bundle './output/*/*.js' -m Main --main Main -o index.js",
-    "build:fe": "purs bundle './output/*/*.js' -m FrontEnd --main FrontEnd -o output/build/index.js && npm run build:parcel",
+    "test": "purp test",
+    "build:get-icons": "purp bundle -m GetIcons -t get-icons.js",
+    "build:be": "purp bundle -m Main -t index.js",
+    "build:fe": "purp bundle -m FrontEnd -t output/build/index.js && npm run build:parcel",
     "build:parcel": "parcel build output/build/index.js -d dist",
-    "build:generate-css": "purs bundle './output/*/*.js' -m GenerateStylesheet --main GenerateStylesheet -o generate-css.js && node generate-css.js",
-    "build": "psc-package build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
+    "build:generate-css": "purp bundle -m GenerateStylesheet -t generate-css.js && node generate-css.js",
+    "build": "purp build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
   "author": "",
   "license": "MIT",
