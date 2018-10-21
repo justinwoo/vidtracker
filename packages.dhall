@@ -1,8 +1,8 @@
     let mkPackage =
-          https://raw.githubusercontent.com/justinwoo/spacchetti/140918/src/mkPackage.dhall
+          https://raw.githubusercontent.com/justinwoo/spacchetti/211018/src/mkPackage.dhall
 
 in  let upstream =
-          https://raw.githubusercontent.com/justinwoo/spacchetti/140918/src/packages.dhall
+          https://raw.githubusercontent.com/justinwoo/spacchetti/211018/src/packages.dhall
 
 in  let overrides =
           { halogen =
