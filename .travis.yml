@@ -2,4 +2,4 @@ sudo: required
 dist: trusty
 language: nix
 script:
-  - nix-shell easy-purescript.nix --run make
+  - nix-shell --run make
