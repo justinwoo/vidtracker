@@ -1,15 +1,14 @@
-build: insdhall deps
+build: npm-deps purs-deps
 	npm run build
 
-deps:
+npm-deps:
 	npm install
-	psc-package install
 
-format-dhall:
+purs-deps:
 	dhall format --inplace packages.dhall
-
-insdhall:
 	spacchetti insdhall
+	psc-package2nix
+	nix-shell install-deps.nix --run 'echo installation complete.'
 
 watch:
 	parcel build/index.js
