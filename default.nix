@@ -19,8 +19,9 @@ in pkgs.stdenv.mkDerivation {
   name = "easy-purescript";
   src = ./.;
 
-  buildInputs
-     = easy-ps.buildInputs
-    ++ [ psc-package2nix
-       ];
+  buildInputs = easy-ps.buildInputs ++ [
+    psc-package2nix
+    pkgs.jq
+    pkgs.nix-prefetch-git
+  ];
 }

@@ -437,11 +437,11 @@ let
 
     halogen = pkgs.stdenv.mkDerivation {
       name = "halogen";
-      version = "master";
+      version = "v5.0.0-pre";
       src = pkgs.fetchgit {
-        url = "https://github.com/slamdata/purescript-halogen.git";
-        rev = "master";
-        sha256 = "0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5";
+        url = "https://github.com/justinwoo/purescript-halogen.git";
+        rev = "v5.0.0-pre";
+        sha256 = "04mhcnbhpbd7nrhycd9g2vgigzcyqaygiqp58i84qsicspj1ny41";
       };
       dontInstall = true;
       buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
