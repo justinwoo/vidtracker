@@ -17,7 +17,6 @@ let
 
 in pkgs.stdenv.mkDerivation {
   name = "easy-purescript";
-  src = ./.;
 
   buildInputs = easy-ps.buildInputs ++ [
     psc-package2nix
