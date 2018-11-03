@@ -12,7 +12,10 @@ let
         sha256 = "0jhqaimcg9cglnby0rn5xnrllcjj9mlb5yp6zqpy8b9zpg744v7d";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     aff-promise = pkgs.stdenv.mkDerivation {
@@ -24,7 +27,10 @@ let
         sha256 = "1zy91qhd0zfxys4bk5ncvvfad6hqpa2ghd4xn8vqp4zj0xr8phwc";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     arraybuffer-types = pkgs.stdenv.mkDerivation {
@@ -36,7 +42,10 @@ let
         sha256 = "059a8n49yhl46l1b1j2qj4ichzq6dzj29ajkfvw88npzj5w2rshy";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     arrays = pkgs.stdenv.mkDerivation {
@@ -48,7 +57,10 @@ let
         sha256 = "1pcvkgfp8kxk7s1lm28cpc24d0y782n6n6xirkdb09jjh6i62r6s";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     avar = pkgs.stdenv.mkDerivation {
@@ -60,7 +72,10 @@ let
         sha256 = "14g05jm2xricy5b9vn4k4lhc9lzi5jvpvv85h10s17kn4wwi9igk";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     bifunctors = pkgs.stdenv.mkDerivation {
@@ -72,7 +87,10 @@ let
         sha256 = "1bdra5fbkraglqrrm484vw8h0wwk48kzkn586v4y7fg106q1q386";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     catenable-lists = pkgs.stdenv.mkDerivation {
@@ -84,7 +102,10 @@ let
         sha256 = "1zhc6mfgzkahrnbrl39vdj6biy75gibmayw8ahj9a23amsggs6df";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     colors = pkgs.stdenv.mkDerivation {
@@ -96,7 +117,10 @@ let
         sha256 = "05bkfqllfpkh7nj0nzgd5p387hlpk0x35nam1i6xm3vzma9csj18";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     console = pkgs.stdenv.mkDerivation {
@@ -108,7 +132,10 @@ let
         sha256 = "1rc9b53q0l7g37113nspdcxcysg19wfq0l9d84gys8dp3q9n8vbf";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     const = pkgs.stdenv.mkDerivation {
@@ -120,7 +147,10 @@ let
         sha256 = "1fzj2zak5a59lxg7vhxsp24hqydhxs8iq89rbl7qm4zcqb0lvw70";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     contravariant = pkgs.stdenv.mkDerivation {
@@ -132,7 +162,10 @@ let
         sha256 = "0vvcgfclx236kg4y76nwih787wyqacq8mmx42q64xzl964yrwxkk";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     control = pkgs.stdenv.mkDerivation {
@@ -144,7 +177,10 @@ let
         sha256 = "10703zvsnjm5fc74k6wzjsvpsfyc3jci3jxhm7rxf7ymya9z1z53";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     coroutines = pkgs.stdenv.mkDerivation {
@@ -156,7 +192,10 @@ let
         sha256 = "1jax7by8kn9fjg00avhziy3n18i3510iwzs3d73ziplanbw4qw4k";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     css = pkgs.stdenv.mkDerivation {
@@ -168,7 +207,10 @@ let
         sha256 = "0f6gib6rp20qz08vramw7k6kv2ck315lmshjpii8zmkjb5ya0w55";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     datetime = pkgs.stdenv.mkDerivation {
@@ -180,7 +222,10 @@ let
         sha256 = "0zpjpnsnn95cscc95p9p59g7fvcc4qcl5yjmlrkjln4swi62jggd";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     debug = pkgs.stdenv.mkDerivation {
@@ -192,7 +237,10 @@ let
         sha256 = "0gwjj80akys0h111i74n429fmny992gx0r4rk1n98gqlqm5cmi21";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     distributive = pkgs.stdenv.mkDerivation {
@@ -204,7 +252,10 @@ let
         sha256 = "0zbn0yq1vv7fbbf1lncg80irz0vg7wnw9b9wrzxhdzpbkw4jinsl";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     dom-indexed = pkgs.stdenv.mkDerivation {
@@ -216,7 +267,10 @@ let
         sha256 = "0gbmli54smjwwpwq0pa44vjqsbhhyfvm4c56issrd8f405wgrwn0";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     effect = pkgs.stdenv.mkDerivation {
@@ -228,7 +282,10 @@ let
         sha256 = "0l46xqz39khf2c779d8mvax1fp2phy5sf8qdn31x67dz389mjr81";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     either = pkgs.stdenv.mkDerivation {
@@ -240,7 +297,10 @@ let
         sha256 = "0c72wk4hdcayj1jvwk1i6fny8r9iflxblvng6a265hb9r8gnjnwn";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     enums = pkgs.stdenv.mkDerivation {
@@ -252,7 +312,10 @@ let
         sha256 = "1g2zns5xsdb9xyv14iwyvg2x39hjpsyvvrkh8gy1pqgzv6frmb18";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     exceptions = pkgs.stdenv.mkDerivation {
@@ -264,7 +327,10 @@ let
         sha256 = "17s0rg9k4phivhx9j3l2vqqfdhk61gpj1xfqy8w6zj3rnxj0b2cv";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     exists = pkgs.stdenv.mkDerivation {
@@ -276,7 +342,10 @@ let
         sha256 = "0bbdbw3jaqyi8dj2d52zvfgx4vl84d8cr6hp43vy8lfjfcbj0wlk";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     foldable-traversable = pkgs.stdenv.mkDerivation {
@@ -288,7 +357,10 @@ let
         sha256 = "1jcc68nghn1746rn6g6rxhgw1q6jn2mixc3hp3k63hizsjflg5wh";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     foreign = pkgs.stdenv.mkDerivation {
@@ -300,7 +372,10 @@ let
         sha256 = "15mz2s4f8crkd721z4df2aag4s0wil6fs07cpcmi7dpnkn7a4nab";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     foreign-object = pkgs.stdenv.mkDerivation {
@@ -312,7 +387,10 @@ let
         sha256 = "19jz8nqkj2h24r1ay08ba65qqpg4b0a1x31ncsq7jg77ayfhl4ms";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     fork = pkgs.stdenv.mkDerivation {
@@ -324,7 +402,10 @@ let
         sha256 = "1jygqzyci40c28gw2ygnx8v52hilhajj1bdpn7ndvss4i7yh1lcp";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     free = pkgs.stdenv.mkDerivation {
@@ -336,7 +417,10 @@ let
         sha256 = "0f093s5wvbip547fyfxyjqn60z5ay11hs9vzw1h480307vpzq3wm";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     freeap = pkgs.stdenv.mkDerivation {
@@ -348,7 +432,10 @@ let
         sha256 = "007840vpxa4gz0fvjbahyky2xzz625gzfaiy2wjpb50d9qacsr7y";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     freet = pkgs.stdenv.mkDerivation {
@@ -360,7 +447,10 @@ let
         sha256 = "1kpgggwimxjvdvhn6s7z4lzg3yw1rqg5f7pyamx9gh232s4va40i";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     functions = pkgs.stdenv.mkDerivation {
@@ -372,7 +462,10 @@ let
         sha256 = "0675k5kxxwdvsjs6a3is8pwm3hmv0vbcza1b8ls10gymmfz3k3hj";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     functors = pkgs.stdenv.mkDerivation {
@@ -384,7 +477,10 @@ let
         sha256 = "1hdvsznzwl8akkgy0islr48qrqhr3syagggily27lv0d1mjl0rw3";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     gen = pkgs.stdenv.mkDerivation {
@@ -396,7 +492,10 @@ let
         sha256 = "0ddsfb6a23rahkw9d3ymp2sf6d6vxndj73y61cdv74zrlr2nx74p";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     generics-rep = pkgs.stdenv.mkDerivation {
@@ -408,7 +507,10 @@ let
         sha256 = "1d2f03bspgipal4g24x1b8rmx92nk2hwq7k62mix2w4lls2jiizr";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     globals = pkgs.stdenv.mkDerivation {
@@ -420,7 +522,10 @@ let
         sha256 = "150mc0kv0cb5fkx0szicwczjr54bglmlyaynj2grf1r4gnjg967s";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     gomtang-basic = pkgs.stdenv.mkDerivation {
@@ -432,7 +537,10 @@ let
         sha256 = "11zp6id0hrq9hmr0w395ldf403p6v6ldz0miisrxmdmpcrcm3j54";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     halogen = pkgs.stdenv.mkDerivation {
@@ -444,7 +552,10 @@ let
         sha256 = "04mhcnbhpbd7nrhycd9g2vgigzcyqaygiqp58i84qsicspj1ny41";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     halogen-css = pkgs.stdenv.mkDerivation {
@@ -456,7 +567,10 @@ let
         sha256 = "1a8sj8ydfnvj3vh2l3f0yyd69y7v4qki1a5m99n0v2aqc1y6nrzl";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     halogen-vdom = pkgs.stdenv.mkDerivation {
@@ -468,7 +582,10 @@ let
         sha256 = "0fjhyyvmi4lg2ds5ahxk4il0fq19knj90crw6hz75f0vvid9rily";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     identity = pkgs.stdenv.mkDerivation {
@@ -480,7 +597,10 @@ let
         sha256 = "0jw61rk4308qmbjxkdb37fdw2r08pzh8z3lg2x29f9l9f7ra5ggw";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     integers = pkgs.stdenv.mkDerivation {
@@ -492,7 +612,10 @@ let
         sha256 = "17d4bfpnrmbxlc7hhhrvnli70ydaqyr26zgvc9q52a76zgdcb4cf";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     invariant = pkgs.stdenv.mkDerivation {
@@ -504,7 +627,10 @@ let
         sha256 = "1fimpbh3yb7clvqxcdf4yf9im64z0v2s9pbspfacgq5b4vshjas9";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     jajanmen = pkgs.stdenv.mkDerivation {
@@ -516,7 +642,10 @@ let
         sha256 = "1pd0aij1h9y0i3pzz8x8liv80fxlm27yiybrs93xqh275a706km3";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     js-date = pkgs.stdenv.mkDerivation {
@@ -528,7 +657,10 @@ let
         sha256 = "19qyzbr4a1ca8znbd8gcbz0a801f5p1v238ky3408gdx4ba32zjd";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     js-timers = pkgs.stdenv.mkDerivation {
@@ -540,7 +672,10 @@ let
         sha256 = "1a8092sli7zqw1wflibhjza1ww21dxl7x7r602iazzwh2g70v4dg";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     lazy = pkgs.stdenv.mkDerivation {
@@ -552,7 +687,10 @@ let
         sha256 = "156q89l4nvvn14imbhp6xvvm82q7kqh1pyndmldmnkhiqyr84vqv";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     lcg = pkgs.stdenv.mkDerivation {
@@ -564,7 +702,10 @@ let
         sha256 = "1851cq2g84jzjbvbmncbivbhaqzj9zv5ni3gs14k04nmx2brxmvj";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     lenient-html-parser = pkgs.stdenv.mkDerivation {
@@ -576,7 +717,10 @@ let
         sha256 = "19i4vcj93nz400yiyl4rj190alp5yv9lxm4vw83a5nrk32pll5xi";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     lists = pkgs.stdenv.mkDerivation {
@@ -588,7 +732,10 @@ let
         sha256 = "14z4pmw76h3rj6mqwkxny91nqrk5rj5drsl4za2sng83bkj9fj4k";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     makkori = pkgs.stdenv.mkDerivation {
@@ -600,7 +747,10 @@ let
         sha256 = "09i5j2xqp6rjmljc6kbn3h1ybw1j3dfwdl6bxzr0wqk3y14wpdlq";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     math = pkgs.stdenv.mkDerivation {
@@ -612,7 +762,10 @@ let
         sha256 = "1msmy9w7y6fij62sdc55w68gpwkhm6lhgc8qjisjk4sxx1wdg1rr";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     maybe = pkgs.stdenv.mkDerivation {
@@ -624,7 +777,10 @@ let
         sha256 = "06mm4a6lbp5by14vms3lyhqp64211lwnq1dqbaazvdp0afykx1z5";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     media-types = pkgs.stdenv.mkDerivation {
@@ -636,7 +792,10 @@ let
         sha256 = "0ykwmxrhmwfy6c5mxjxa43xdf5xqakrqyvr5fn986yad50gjqj75";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     milkis = pkgs.stdenv.mkDerivation {
@@ -648,7 +807,10 @@ let
         sha256 = "1x12h3bsc09373j3z87cv5w3xs8by17k8xnjsf8gyx51pbfbfsf3";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     naporitan = pkgs.stdenv.mkDerivation {
@@ -660,7 +822,10 @@ let
         sha256 = "0g9aav1bzrkda6zv8d77hy5gf0jjm7x026rfbbqsrm6flfi8k85n";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     newtype = pkgs.stdenv.mkDerivation {
@@ -672,7 +837,10 @@ let
         sha256 = "0qvk9p41miy806b05b4ikbr3if0fcyc35gfrwd2mflcxxp46011c";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-buffer = pkgs.stdenv.mkDerivation {
@@ -684,7 +852,10 @@ let
         sha256 = "0ih2y29srdxgn526fw2v1y95hpivjil44vkl93w6nrqsymki36y0";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-child-process = pkgs.stdenv.mkDerivation {
@@ -696,7 +867,10 @@ let
         sha256 = "0igspvgsqabwrgync4znn7gg89xl4lck9hdqfscawj8fj7rg960d";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-fs = pkgs.stdenv.mkDerivation {
@@ -708,7 +882,10 @@ let
         sha256 = "1hkg8j4zkyq71g2bn3vpfqb8x49rdd9k0ayv3zf6l8k80gp3qigx";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-fs-aff = pkgs.stdenv.mkDerivation {
@@ -720,7 +897,10 @@ let
         sha256 = "0vjc9zag7y20yxhhv45hrwv9fbpmp0szv40vaxl5x8mnd5wv28x7";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-http = pkgs.stdenv.mkDerivation {
@@ -732,7 +912,10 @@ let
         sha256 = "1pwh3alx32gcih2w050pac4yy9l4q6zxar8i7yri3j23nfg6lcpi";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-path = pkgs.stdenv.mkDerivation {
@@ -744,7 +927,10 @@ let
         sha256 = "0j1ni52m62dpcrfakl1ik131i31bkg91yv0p1c40sdw0f59fzf6x";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-process = pkgs.stdenv.mkDerivation {
@@ -756,7 +942,10 @@ let
         sha256 = "19p4ylxn9cfa7drxrl4gzsfp52jwgm67n5k7rs9lazkp1lvmk0jh";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-sqlite3 = pkgs.stdenv.mkDerivation {
@@ -768,7 +957,10 @@ let
         sha256 = "0shpp6w4wp81lh49p38yv5rrxy1n4b9wkiywdg8dqf843946bjhp";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-streams = pkgs.stdenv.mkDerivation {
@@ -780,7 +972,10 @@ let
         sha256 = "098wdq0rj4nkc470fwmiaars7vxac9n1dh4d82jrji3m77n473da";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     node-url = pkgs.stdenv.mkDerivation {
@@ -792,7 +987,10 @@ let
         sha256 = "0qbpdz62psy7hb34hw5rw2x1pq7yhd214ysza0xh46c3nlp0ib9y";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     nonempty = pkgs.stdenv.mkDerivation {
@@ -804,7 +1002,10 @@ let
         sha256 = "1vz174sg32cqrp52nwb2vz9frrzmdwzzlgl4vc2cm5wlf2anirxj";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     now = pkgs.stdenv.mkDerivation {
@@ -816,7 +1017,10 @@ let
         sha256 = "18h5pif2dy4r7w1xg2zw4mvdqlar9xqp3rawkiavmsc946ncf3zs";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     nullable = pkgs.stdenv.mkDerivation {
@@ -828,7 +1032,10 @@ let
         sha256 = "1m5j2v0zp9s2349khmvxz98fsfxxn3pzxjiv87rnxd72rsray68v";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     numbers = pkgs.stdenv.mkDerivation {
@@ -840,7 +1047,10 @@ let
         sha256 = "1kzdg69llbmrccmgwrpfiq6hr6jdg2zl40qgzj10nzbhgqrbv2y1";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     options = pkgs.stdenv.mkDerivation {
@@ -852,7 +1062,10 @@ let
         sha256 = "1yfsx3fxwqkcb7q6kifbsrx8wnr8j6gg5nm3ybgiwkbdk6s1j7v2";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     ordered-collections = pkgs.stdenv.mkDerivation {
@@ -864,7 +1077,10 @@ let
         sha256 = "0kh1hxs5lqmdzjf8zs7i8val9l5z67l7g10rgbnkln2j54mym3cf";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     orders = pkgs.stdenv.mkDerivation {
@@ -876,7 +1092,10 @@ let
         sha256 = "13p1sm4dxkmxhld9x5qqg62iiajjb3qpzs66c1r24y5fs4zsfry4";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     parallel = pkgs.stdenv.mkDerivation {
@@ -888,7 +1107,10 @@ let
         sha256 = "1d5bnagabw2k8yxywkygwrpblb2ggqh2fhpqfrx2sj1y53x332hg";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     partial = pkgs.stdenv.mkDerivation {
@@ -900,7 +1122,10 @@ let
         sha256 = "0nw5989ydin2d12b97ch4pdynxkq91xpj7yym5gpd5fpbgy36mdi";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     posix-types = pkgs.stdenv.mkDerivation {
@@ -912,7 +1137,10 @@ let
         sha256 = "0xvxjvxr7n4dv53p8w5qfmgx37cga5bp2rjhkbfvj89rb74vm3i1";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     prelude = pkgs.stdenv.mkDerivation {
@@ -924,7 +1152,10 @@ let
         sha256 = "1pwqhsba4xyywfflma5rfqzqac1vmybwq7p3wkm4wsackvbn34h5";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     prettier = pkgs.stdenv.mkDerivation {
@@ -936,7 +1167,10 @@ let
         sha256 = "17fkkdiiwd4ydqg606ragawxlf8kkl9nnizpsciginzw85jzpy5s";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     profunctor = pkgs.stdenv.mkDerivation {
@@ -948,7 +1182,10 @@ let
         sha256 = "1v4kvmhmiwznd4lswp9339h64pgv5zvd3vm1q7gzj70767a3941i";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     profunctor-lenses = pkgs.stdenv.mkDerivation {
@@ -960,7 +1197,10 @@ let
         sha256 = "10by0cbz68mqbdwhbrzp1lvyyg72lp636lpb4vczq0fxvw3q5v9x";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     proxy = pkgs.stdenv.mkDerivation {
@@ -972,7 +1212,10 @@ let
         sha256 = "0rqf25b1n9p5sgx7gdsxwrfv9rb3sqxgqmqpp5kdm30lfk7snz24";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     quickcheck = pkgs.stdenv.mkDerivation {
@@ -984,7 +1227,10 @@ let
         sha256 = "18j0qg1xz7vzr7lscg2nn59i2cn3f3cf0pazbi3ka7nf4i1k1b1s";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     random = pkgs.stdenv.mkDerivation {
@@ -996,7 +1242,10 @@ let
         sha256 = "0k37v7z529adx6ypxj0xjyfrz45qia6p0vki2wpvi8lik7c698gf";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     record = pkgs.stdenv.mkDerivation {
@@ -1008,7 +1257,10 @@ let
         sha256 = "1vx6qlcg8x8cij3jsf52gqnd1dvam36pw83x4sad1ddir2s5h0i8";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     record-format = pkgs.stdenv.mkDerivation {
@@ -1020,7 +1272,10 @@ let
         sha256 = "1bw00l68azyad6b33iqhfjmm0n1j58h1ljli9772ybwhh8slsh5h";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     refs = pkgs.stdenv.mkDerivation {
@@ -1032,7 +1287,10 @@ let
         sha256 = "08161iy1xbafzblv033v84156azpcqkiw9v9d6gliphrq5fm17gm";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     shoronpo = pkgs.stdenv.mkDerivation {
@@ -1044,7 +1302,10 @@ let
         sha256 = "0vyzs7yzc8dxvci2y6qzbwa82ag8big5qwiffx73fzvk52k5hfy6";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     simple-json = pkgs.stdenv.mkDerivation {
@@ -1056,7 +1317,10 @@ let
         sha256 = "1iyiy2hl9dsc9y34n6izn4qpj72wpv9a45lj6k6br3vlmm2f00z1";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     st = pkgs.stdenv.mkDerivation {
@@ -1068,7 +1332,10 @@ let
         sha256 = "0m2jkb9dmpbr8s1c20l7sm2q11y5rx8gqfiyspnyhq5apzkknjr0";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     string-parsers = pkgs.stdenv.mkDerivation {
@@ -1080,7 +1347,10 @@ let
         sha256 = "1lykswyd3icv9lx4r096lxfd244i0pzj2f4fpm604czzlfw6bspv";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     strings = pkgs.stdenv.mkDerivation {
@@ -1092,7 +1362,10 @@ let
         sha256 = "0i7i3irhx1l9abprll95fi374gp49qka0vbhk80cbnhmx1v5px5k";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     sunde = pkgs.stdenv.mkDerivation {
@@ -1104,7 +1377,10 @@ let
         sha256 = "1s62al6ark10hqc6kdz3nqarblpa6fmdy5kb3bjlxsa8nib436pa";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     tailrec = pkgs.stdenv.mkDerivation {
@@ -1116,7 +1392,10 @@ let
         sha256 = "0z7k80nl8dgv8mc2w8xsl2n0637bd1l8ppxak8kaifgjjwa81hx3";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     test-unit = pkgs.stdenv.mkDerivation {
@@ -1128,7 +1407,10 @@ let
         sha256 = "0iyqdrhb0n5qpck8cprl68034ivywmphbw5wr7zy1jlyj9450nwh";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     these = pkgs.stdenv.mkDerivation {
@@ -1140,7 +1422,10 @@ let
         sha256 = "0ywwpbcz1d0pdi3f9h9kla52vq1if8zwdz7jq7lqz5s8zj8kyg5r";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     toppokki = pkgs.stdenv.mkDerivation {
@@ -1152,7 +1437,10 @@ let
         sha256 = "00blhsk7j3xhvp16kj2qlmzd01g1v8nn154gr21l4krxrdb5553y";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     tortellini = pkgs.stdenv.mkDerivation {
@@ -1164,7 +1452,10 @@ let
         sha256 = "0gpgr4f2l5rn1zy0iqy42gpll01abb11rd7s9gx9yzcj43l1fsgb";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     transformers = pkgs.stdenv.mkDerivation {
@@ -1176,7 +1467,10 @@ let
         sha256 = "1aazy1zk66lng8w0gjx2l7sqfr968gmibdxi4kd93zb7bw5vldvn";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     tuples = pkgs.stdenv.mkDerivation {
@@ -1188,7 +1482,10 @@ let
         sha256 = "0vlhv4l2a2vb6rh5zfsjhbv7hy4vz9fa5p1ns0rk54xd2pzzlvgd";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     type-equality = pkgs.stdenv.mkDerivation {
@@ -1200,7 +1497,10 @@ let
         sha256 = "1b7szyca5s96gaawvgwrw7fa8r7gqsdff7xhz3vvngnylv2scl3w";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     typelevel-prelude = pkgs.stdenv.mkDerivation {
@@ -1212,7 +1512,10 @@ let
         sha256 = "0dn95n9jnk2ilw38cf9p8p6q3xad6ck1rq3r4jba92kmk4ql665r";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     unfoldable = pkgs.stdenv.mkDerivation {
@@ -1224,7 +1527,10 @@ let
         sha256 = "077vl30j3pxr3zw6cw7wd0vi22j92j8va15r26rn53wzbzcgr41j";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     unsafe-coerce = pkgs.stdenv.mkDerivation {
@@ -1236,7 +1542,10 @@ let
         sha256 = "0k9255mk2mz6xjb11pwkgfcblmmyvr86ig5kr92jwy95xim09zip";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     unsafe-reference = pkgs.stdenv.mkDerivation {
@@ -1248,7 +1557,10 @@ let
         sha256 = "0q758dz59qz0li4s3w1qcg921xp5i5rh6i1l611iv7rr8cbj11al";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     validation = pkgs.stdenv.mkDerivation {
@@ -1260,7 +1572,10 @@ let
         sha256 = "1y5i1jpr6jn1yjjpi4l5mk7jyd5v21fym892s0y5bdn4nj7i465l";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     variant = pkgs.stdenv.mkDerivation {
@@ -1272,7 +1587,10 @@ let
         sha256 = "045qkiv9j0pbdffyzn4r3gr75ahl7h9kxmib6q1bpds1c490pcg6";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-clipboard = pkgs.stdenv.mkDerivation {
@@ -1284,7 +1602,10 @@ let
         sha256 = "0zbhrm4ck8a8wf1knpmxccfyws07frld8i70wnkwjfan1pgdji63";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-dom = pkgs.stdenv.mkDerivation {
@@ -1296,7 +1617,10 @@ let
         sha256 = "070ybc5xzpsh75p618ll9j0lzxqgvc4cl5cdrn71v0vagmyhgm8h";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-events = pkgs.stdenv.mkDerivation {
@@ -1308,7 +1632,10 @@ let
         sha256 = "1j6gkap9ap1ik7aiiyxwdmvjfhfrw73dq5hi9a671k5prlma7v3k";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-file = pkgs.stdenv.mkDerivation {
@@ -1320,7 +1647,10 @@ let
         sha256 = "14kzwrwbfacxr4krfriy8qx13wnhiydrgs6hp59a7bmx58w0ifks";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-html = pkgs.stdenv.mkDerivation {
@@ -1332,7 +1662,10 @@ let
         sha256 = "1y0g2ginqmfng058c99dm9n25vhz3g76d4l2v7yyrln9w04m4mvx";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-storage = pkgs.stdenv.mkDerivation {
@@ -1344,7 +1677,10 @@ let
         sha256 = "1lr4lswsp62kl21rl6jb377a0sya105sfimkxm3y22grx88l6vj1";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-touchevents = pkgs.stdenv.mkDerivation {
@@ -1356,7 +1692,10 @@ let
         sha256 = "1avg7jljd1j7d0b7k7fbqxi90aa01awp9x17v53mynzg6gyvc8zb";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 
     web-uievents = pkgs.stdenv.mkDerivation {
@@ -1368,7 +1707,10 @@ let
         sha256 = "1683ysabddnhsjiy70axpslagi2cp2ab3qd0r1qjx6ab2zjd6kc0";
       };
       dontInstall = true;
-      buildPhase = "cp --no-preserve=mode,ownership,timestamp -r $src $out";
+      buildPhase = ''
+        cp -r $src $out
+        rm -rf $out/.git
+      '';
     };
 };
 

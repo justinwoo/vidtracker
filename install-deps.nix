@@ -10,12 +10,16 @@ let
   # these are the copy commands for copying our dependencies from the nix store
   # this means that if we have overlapping packages between sets or between projects,
   # they come from the same source!
-  copyCmds = map (x: let target = ".psc-package/${packages.set}/${x.name}/${x.version}"; in ''
-    mkdir -p ${target}
-    echo ${target}
-    echo ${toString x.outPath}
-    cp --no-preserve=mode,ownership,timestamp -r ${toString x.outPath}/* ${target}
-  '') packageDrvs;
+  copyCmds = map (x:
+    let target = ".psc-package/${packages.set}/${x.name}/${x.version}";
+    in ''
+      if [ ! -e ${target} ]; then
+	mkdir -p ${target}
+	echo ${target}
+	echo ${toString x.outPath}
+	cp --no-preserve=mode,ownership,timestamp -r ${toString x.outPath}/* ${target}
+      fi
+    '') packageDrvs;
 
 in pkgs.stdenv.mkDerivation {
   name = "install-deps";

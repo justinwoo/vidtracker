@@ -11,8 +11,8 @@ let
   psc-package2nix = import (pkgs.fetchFromGitHub {
     owner = "justinwoo";
     repo = "psc-package2nix";
-    rev = "414ba2f58e270dece3834021e380c41cd940b983";
-    sha256 = "0lrw2k1gm4aamnlxi16syibyqi7i3nvx9bwzq889vd1p0sbzxs9x";
+    rev = "a99092bfe9c32e0df9a826ccc509bd02b7b192c1";
+    sha256 = "0296jb8b47zxnnhrjp4ky1mj835jff59sx4przix652mclsy13r3";
   }) {};
 
 in pkgs.stdenv.mkDerivation {
