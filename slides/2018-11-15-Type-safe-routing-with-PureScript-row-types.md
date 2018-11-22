@@ -5,6 +5,7 @@ institute: Monadic Warsaw
 date: 2018 Nov 15
 theme: Madrid
 colortheme: dolphin
+aspectratio: 169
 fontfamily: noto-sans
 linestretch: 1.2
 header-includes:
@@ -15,13 +16,13 @@ fontsize: 8pt
 ## @jusrin00 on Twitter
 
 \begin{center}
-  \includegraphics[width=0.5\textwidth]{./meme1.png}
+  \includegraphics[width=0.3\textwidth]{./meme1.png}
 \end{center}
 
 -----
 
 \begin{center}
-  \includegraphics[width=0.5\textwidth]{./meme2.png}
+  \includegraphics[width=0.3\textwidth]{./meme2.png}
 \end{center}
 
 -----
