@@ -5,13 +5,19 @@ import Prelude
 import CSS (backgroundImage, url)
 import Control.MonadPlus (guard)
 import Data.Array as Array
+import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..), either, hush)
+import Data.Foldable (maximumBy)
+import Data.Function (on)
 import Data.JSDate as JSDate
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap, wrap)
 import Data.Set (Set, insert, member)
 import Data.String (Pattern(Pattern), contains, toLower)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
@@ -91,6 +97,7 @@ data RemoteTaskState
 
 type State =
   { fileData :: Array FileData
+  , latest ::  Latest
   , watched :: Array WatchedData
   , filterWatched :: Boolean
   , sorting :: Sorting
@@ -106,6 +113,13 @@ type FileData =
   , created :: Maybe String
   , dateString :: Maybe String
   , jsDate :: Maybe JSDate.JSDate
+  }
+
+type Latest = Map (Maybe String) LatestEntry
+
+type LatestEntry =
+  { name :: Maybe String
+  , episode :: Maybe String
   }
 
 getDate :: String -> JSDate.JSDate
@@ -129,6 +143,33 @@ prepareFilesData paths watchedData =
       , dateString: JSDate.toDateString <$> jsDate
       , jsDate
       }
+
+prepareLatest :: Array FileData -> Array WatchedData -> Latest
+prepareLatest xs watched =
+  Map.fromFoldable entries
+  where
+    watched' = _.path <$> watched
+
+    group = Array.groupBy (eq `on` _.name)
+        <<< Array.sortWith _.name
+        <<< Array.filter (\x -> Array.elem x.path watched')
+
+    entries = mkEntry <$> group xs
+
+    mkEntry :: NEA.NonEmptyArray FileData -> Tuple (Maybe String) LatestEntry
+    mkEntry ys = do
+      let head = NEA.head ys
+      Tuple
+        head.name
+        { name: head.name
+        , episode: _.episode =<< maximumBy (compare `on` _.episode) ys
+        }
+
+getLatest :: Maybe String -> Latest -> String
+getLatest key latest =
+  fromMaybe "No watched entries found" $ format <$> Map.lookup key latest
+  where
+    format x = "Latest watched of " <> (fromMaybe "" x.name) <> ": " <> (fromMaybe "Unknown episode" x.episode)
 
 data Query a
   = Init a
@@ -162,6 +203,7 @@ ui =
     initialState :: State
     initialState =
       { fileData: mempty
+      , latest: Map.empty
       , watched: mempty
       , filterWatched: false
       , sorting: NoSorting
@@ -322,6 +364,7 @@ ui =
               ] []
             , HH.a
               [ HP.class_ classNames.fileLink
+              , HP.title $ getLatest name state.latest
               , HE.onClick $ HE.input_ (OpenFile path) ]
               [ HH.text $ unwrap path ]
             , HH.span
@@ -375,15 +418,17 @@ ui =
 
     eval (FetchData next) = do
       getResult >>= unE
-        \{filesData: fd, watched: w} -> do
-          H.modify_ _ {fileData = fd, watched = w}
+        \{filesData: fd, watched: w, latest: l} -> do
+          H.modify_ _ {fileData = fd, watched = w, latest = l}
       pure next
       where
-        getResult = do
+        getResult = ado
           files <- get apiRoutes.files
           watched <- get apiRoutes.watched
-          let filesData = prepareFilesData <$> files <*> watched
-          pure $ { filesData: _, watched: _ } <$> filesData <*> watched
+          let
+            filesData = prepareFilesData <$> files <*> watched
+            latest = prepareLatest <$> filesData <*> watched
+          in { filesData: _, watched: _, latest: _ } <$> filesData <*> watched <*> latest
 
     eval (GetIcons next) = do
       H.modify_ _ {getIcons = Working}
