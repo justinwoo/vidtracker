@@ -15,10 +15,6 @@ let
 
 in pkgs.stdenv.mkDerivation {
   name = "install-deps";
-
-  # make sure we depend on these explicitly
-  buildInputs = packageDrvs;
-
   # when the shell starts, we can run these commands to copy over our dependencies.
   shellHook = pp2n-utils.mkDefaultShellHook packages packageDrvs;
 }
