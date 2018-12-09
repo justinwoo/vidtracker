@@ -1,3 +1,6 @@
+#!/usr/bin/env nix-shell
+#!nix-shell --run exit
+
 let
   pkgs = import <nixpkgs> {};
 

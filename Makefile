@@ -8,7 +8,7 @@ purs-deps:
 	dhall format --inplace packages.dhall
 	spacchetti insdhall
 	psc-package2nix
-	nix-shell install-deps.nix --run 'echo installation complete.'
+	./install-deps.nix
 
 watch:
 	parcel build/index.js

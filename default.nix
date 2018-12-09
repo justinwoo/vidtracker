@@ -4,15 +4,12 @@ let
   easy-ps = import (pkgs.fetchFromGitHub {
     owner = "justinwoo";
     repo = "easy-purescript-nix";
-    rev = "dac3520da91bf1b2d152d468700b75be5599b784";
-    sha256 = "02lcmsscbq1k3c8ap03xxbrf4vbwi1al6hsvfsr3sry7xj8f7ca4";
+    rev = "20ea9074ffa468af60d96f30ea836fa67d8af7b0";
+    sha256 = "1kqa7vvy97kl38syjy4m6p254nkswjlbz5prib4xvi0ark1s16g6";
   });
 
 in pkgs.stdenv.mkDerivation {
   name = "easy-purescript";
 
-  buildInputs = easy-ps.buildInputs ++ [
-    pkgs.jq
-    pkgs.nix-prefetch-git
-  ];
+  buildInputs = easy-ps.buildInputs;
 }
