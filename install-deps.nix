@@ -1,23 +1,12 @@
-#!/usr/bin/env nix-shell
-#!nix-shell --run exit
+#! /usr/bin/env nix-shell
+#! nix-shell ./install-deps.nix --run 'exit'
+
+{ pkgs ? import <nixpkgs> {} }:
 
 let
-  pkgs = import <nixpkgs> {};
+  packages = import ./packages.nix { inherit pkgs; };
 
-  # import our packages
-  packages = import ./packages.nix {};
+  easy-ps = import ./easy-ps.nix { inherit pkgs; };
+  pp2n-utils = import (easy-ps.inputs.psc-package2nix.src + "/utils.nix");
 
-  # these are the package derivations we will want to work with
-  packageDrvs = builtins.attrValues packages.inputs;
-
-  # these are some utils for working with pp2n
-  pp2n-utils = import (pkgs.fetchurl {
-    url = "https://raw.githubusercontent.com/justinwoo/psc-package2nix/409aab26afa0784eb90440da33b1ad4d56aedb93/utils.nix";
-    sha256 = "0rkqisfvpz5x8j2p0llv0yzgz5vnzy7fcfalp8nkymbshk8702gg";
-  });
-
-in pkgs.stdenv.mkDerivation {
-  name = "install-deps";
-  # when the shell starts, we can run these commands to copy over our dependencies.
-  shellHook = pp2n-utils.mkDefaultShellHook packages packageDrvs;
-}
+in pp2n-utils.mkInstallPackages pkgs packages
