@@ -6,7 +6,7 @@ npm-deps:
 
 purs-deps:
 	dhall format --inplace packages.dhall
-	spacchetti insdhall
+	spago psc-package-insdhall
 	psc-package2nix
 	./install-deps.nix
 
