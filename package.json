@@ -10,8 +10,7 @@
     "test": "purp test",
     "build:get-icons": "purp bundle -m GetIcons -t get-icons.js",
     "build:be": "purp bundle -m Main -t index.js",
-    "build:fe": "purp bundle -m FrontEnd -t output/build/index.js && npm run build:parcel",
-    "build:parcel": "parcel build output/build/index.js -d dist",
+    "build:fe": "make build-fe",
     "build:generate-css": "purp bundle -m GenerateStylesheet -t generate-css.js && node generate-css.js",
     "build": "purp build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
