@@ -12,3 +12,9 @@ purs-deps:
 
 watch:
 	parcel build/index.js
+
+build-fe:
+	psc-package build -- -g corefn
+	zephyr -f FrontEnd.main
+	purs bundle "dce-output/*/*.js" -m FrontEnd -o output/build/index.js
+	parcel build output/build/index.js -d dist
