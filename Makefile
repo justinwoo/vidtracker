@@ -4,17 +4,19 @@ build: npm-deps purs-deps
 npm-deps:
 	npm install
 
-purs-deps:
+insdhall:
 	dhall format --inplace packages.dhall
 	spago psc-package-insdhall
 	psc-package2nix
-	./install-deps.nix
+
+purs-deps:
+	pp2n install
 
 watch:
 	parcel build/index.js
 
 build-fe:
-	psc-package build -- -g corefn
+	pp2n build -g corefn
 	zephyr -f FrontEnd.main
-	purs bundle "dce-output/*/*.js" -m FrontEnd -o output/build/index.js
-	parcel build output/build/index.js -d dist
+	purs bundle "dce-output/*/*.js" -m FrontEnd -o fe-bundle.js
+	parcel build fe-bundle.js -d dist
