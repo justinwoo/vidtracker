@@ -12,7 +12,7 @@
     "build:be": "purp bundle -m Main -t index.js",
     "build:fe": "make build-fe",
     "build:generate-css": "purp bundle -m GenerateStylesheet -t generate-css.js && node generate-css.js",
-    "build": "purp build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
+    "build": "pp2n build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
   "author": "",
   "license": "MIT",
