@@ -7,11 +7,11 @@
     "test": "test"
   },
   "scripts": {
-    "test": "purp test",
-    "build:get-icons": "purp bundle -m GetIcons -t get-icons.js",
-    "build:be": "purp bundle -m Main -t index.js",
+    "test": "pp2n test",
+    "build:get-icons": "pp2n bundle -m GetIcons -o get-icons.js",
+    "build:be": "pp2n bundle -m Main -o index.js",
     "build:fe": "make build-fe",
-    "build:generate-css": "purp bundle -m GenerateStylesheet -t generate-css.js && node generate-css.js",
+    "build:generate-css": "pp2n bundle -m GenerateStylesheet -o generate-css.js && node generate-css.js",
     "build": "pp2n build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
   },
   "author": "",

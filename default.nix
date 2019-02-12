@@ -10,7 +10,5 @@ in pkgs.stdenv.mkDerivation {
     easy-ps.spago
     easy-ps.zephyr
     easy-ps.psc-package2nix
-    easy-ps.purp
-    easy-ps.psc-package
   ];
 }
