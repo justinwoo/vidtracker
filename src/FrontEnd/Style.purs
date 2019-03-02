@@ -5,6 +5,7 @@ import CSS
 import CSS as CSS
 import CSS.Common (auto, center)
 import CSS.Flexbox (flexDirection)
+import Data.NonEmpty as NE
 import Halogen (ClassName(..))
 import Prelude (discard, ($), (<>))
 
@@ -113,6 +114,8 @@ stylesheet = render do
   class_ classNames.fileNote ? do
     width (px 150.0)
     margin (px 10.0) (px 10.0) (px 10.0) (px 10.0)
+  body ? do
+    fontFamily ["Noto Sans CJK JP"] $ NE.singleton sansSerif
   h3 ? do
     userSelect "none"
     cursor "pointer"

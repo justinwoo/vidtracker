@@ -76,6 +76,9 @@
   width: 150px;
   margin: 10px 10px 10px 10px;
 }
+body {
+  font-family: "Noto Sans CJK JP", sans-serif;
+}
 h3 {
   user-select: none;
   cursor: pointer;
