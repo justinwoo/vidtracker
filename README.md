@@ -1,7 +1,5 @@
 # vidtracker
 
-[![Build Status](https://dev.azure.com/justinw2/justin-project/_apis/build/status/justinwoo.vidtracker)](https://dev.azure.com/justinw2/justin-project/_build/latest?definitionId=2)
-
 [![Build Status](https://travis-ci.org/justinwoo/vidtracker.svg?branch=master)](https://travis-ci.org/justinwoo/vidtracker)
 
 blog post about this [here](http://qiita.com/kimagure/items/b576b5bfe370180599f8)
