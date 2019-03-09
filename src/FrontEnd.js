@@ -5,3 +5,7 @@ exports.addWindowKeyListener = function(effect) {
     });
   };
 };
+
+exports.refreshPage = function() {
+  window.location = window.location;
+};
