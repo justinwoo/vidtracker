@@ -85,7 +85,7 @@ class GetWatched m where
 instance gwA :: GetWatched (ExceptT Error Aff) where
   getWatchedData {db} = do
     let
-      template = SProxy :: SProxy "select {columns} from watched"
+      template = SProxy :: SProxy "select {columns} from watched order by created desc"
       query = formatSymbol template
         { columns: intercalateRecordLabels (Proxy :: Proxy WatchedData) (SProxy :: SProxy ", ") }
     results <- liftAff $ J.queryDB db query {}
