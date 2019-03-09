@@ -1,10 +1,11 @@
 {
   "name": "my-project",
-  "set": "local",
-  "source": "",
+  "set": "psc-0.12.3-20190306",
+  "source": "https://github.com/purescript/package-sets.git",
   "depends": [
     "aff",
     "bifunctors",
+    "choco-pie",
     "console",
     "css",
     "debug",

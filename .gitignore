@@ -8,6 +8,7 @@
 /.psa*
 /build/
 /dist/icons
+/dist/index.html
 /dist/index.js
 /dist/index.map
 /.cache

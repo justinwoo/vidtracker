@@ -7,8 +7,6 @@ in pkgs.stdenv.mkDerivation {
   name = "easy-purescript";
   buildInputs = [
     easy-ps.purs
-    easy-ps.spago
-    easy-ps.zephyr
     easy-ps.psc-package2nix
   ];
 }
