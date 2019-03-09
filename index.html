@@ -1,0 +1,65 @@
+<style>
+ * {
+   box-sizing: border-box;
+ }
+
+ body {
+   font-family: 'Noto Sans CJK JP';
+   max-width: 900px;
+   margin: auto;
+   padding: 1rem;
+ }
+
+ .header {
+   display: flex;
+   font-size: 0.8rem;
+   margin-bottom: 1rem;
+ }
+
+ .filters,
+ .recents {
+   flex: 1;
+ }
+
+ .recents {
+   text-align: right;
+ }
+
+ .file {
+   display: flex;
+   align-items: center;
+   border: 1px solid white;
+ }
+
+ .file.cursor {
+   border: 1px solid black;
+   background: rgba(255,0,0,.2);
+ }
+
+
+ .name,
+ .watched {
+   padding: 0.5rem;
+ }
+
+ .icon {
+   width: 2rem;
+   height: 2rem;
+   border: 1px solid grey;
+   border-radius: 2rem;
+   background-size: cover;
+   background-position: 50% 50%;
+   background-repeat: no-repeat;
+ }
+
+ .name {
+   flex: 1;
+ }
+
+ .watched {
+   width: 15rem;
+   text-align: right;
+ }
+
+</style>
+<script src="./src/parcel-index.js">

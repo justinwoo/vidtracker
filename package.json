@@ -11,8 +11,7 @@
     "build:get-icons": "pp2n bundle -m GetIcons -o get-icons.js",
     "build:be": "pp2n bundle -m Main -o index.js",
     "build:fe": "make build-fe",
-    "build:generate-css": "pp2n bundle -m GenerateStylesheet -o generate-css.js && node generate-css.js",
-    "build": "pp2n build && npm run build:fe && npm run build:be && npm run build:get-icons && npm run build:generate-css"
+    "build": "pp2n build && npm run build:fe && npm run build:be && npm run build:get-icons"
   },
   "author": "",
   "license": "MIT",
@@ -29,8 +28,5 @@
   "engines": {
     "node": ">=8.0.0",
     "npm": ">=3.0.0"
-  },
-  "alias": {
-    "echarts": "./src/echarts.js"
   }
 }

@@ -263,6 +263,7 @@ main = launchAff_ do
           , M.makeStaticMiddleware (M.Path "dist") {}
           ]
         traverse_ (flip (M.use (M.Path "/")) app) middlewares
+        M.use (M.Path "*") accessControlMiddleware app
 
         registerRoutes
           apiRoutes
@@ -278,3 +279,5 @@ main = launchAff_ do
         _ <- M.listen (M.Port 3000) (log "Started server") app
         pure unit
       pure unit
+
+foreign import accessControlMiddleware :: M.Middleware
