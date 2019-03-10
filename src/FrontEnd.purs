@@ -73,7 +73,7 @@ initialState =
 render :: State -> H.ComponentHTML Query
 render state =
   HH.div []
-    [ HH.h1_ [HH.text "VT"]
+    [ HH.h1_ [HH.text "vidtracker"]
     , header
     , HH.div_ $ Array.mapWithIndex mkFile state.files
     ]
