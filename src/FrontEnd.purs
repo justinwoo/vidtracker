@@ -6,7 +6,10 @@ import CSS as CSS
 import ChocoPie (runChocoPie)
 import Data.Array as Array
 import Data.Either (Either(..), hush)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Foldable (maximumBy)
+import Data.Function (on)
+import Data.Int as Int
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (class Newtype, un)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
@@ -41,6 +44,8 @@ type File =
   { name :: Path
   , watched :: Maybe DateString
   , series :: Maybe String
+  , episode :: Maybe Int
+  , latest :: Maybe Int
   }
 
 type State =
@@ -112,6 +117,7 @@ render state =
               Just _ -> "done"
               Nothing -> ""
           ]
+      , HP.title $ "latest watched: " <> fromMaybe "unknown" (show <$> file.latest)
       , HE.onClick $ HE.input_ $ SetCursor idx
       ]
       [ HH.div
@@ -136,7 +142,7 @@ render state =
           , HE.onClick $ HE.input $ WatchedClick idx
           ]
           [ HH.text $ maybe ""
-              (\(DateString date) -> "watched " <> date)
+              (\(DateString date) -> fromMaybe "" (show <$> file.latest) <> " watched " <> date)
               file.watched
           ]
       ]
@@ -159,9 +165,9 @@ eval (WatchedClick idx e next) = do
 
 eval (FetchData next) = do
   H.modify_ _ { filesLoading = true }
-  attempt <- H.liftAff getFiles
+  attempt <- H.liftAff $ getFiles
   case attempt of
-    Right files -> H.modify_ _ { files = files, filesLoading = false }
+    Right files -> H.modify_ _ { files = annotateLatest files, filesLoading = false }
     Left e -> Console.error $ "Failed to fetch data: " <> show e
   pure next
   where
@@ -173,8 +179,24 @@ eval (FetchData next) = do
     mkFile watched file@(Path name) =
       { name: Path name
       , watched: DateString <<< _.created <$> Array.find (\x -> x.path == file) watched
-      , series: hush $ _.name <$> runParser nameParser name
+      , series: _.name <$> parsed
+      , episode: Int.fromString <<< _.episode =<< parsed
+      , latest: Nothing
       } :: File
+      where
+        parsed = hush $ runParser nameParser name
+
+    annotateLatest :: Array File -> Array File
+    annotateLatest xs = updateLatest <$> xs
+      where
+        grouped :: Array (Maybe File)
+        grouped = maximumBy (compare `on` _.series) <$> Array.groupBy (eq `on` _.series) xs
+        updateLatest x
+          | match' <- \z -> z.series == x.series
+          , match <- \y -> maybe false match' y
+          , Just (Just y) <- Array.find match grouped
+            = x { latest = y.episode }
+          | otherwise = x
 
 eval (ToggleWatched name next) = do
   Console.log $ "Updating " <> un Path name
