@@ -10,9 +10,8 @@
     "start": "parcel index.html",
     "test": "pp2n test",
     "build:get-icons": "pp2n bundle -m GetIcons -o get-icons.js",
-    "build:be": "pp2n bundle -m Main -o index.js",
     "build:fe": "make build-fe",
-    "build": "pp2n build && npm run build:fe && npm run build:be && npm run build:get-icons"
+    "build": "pp2n build && npm run build:fe && npm run build:get-icons"
   },
   "author": "",
   "license": "MIT",
