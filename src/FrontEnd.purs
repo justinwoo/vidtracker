@@ -9,7 +9,7 @@ import Data.Either (Either(..), hush)
 import Data.Foldable (maximumBy)
 import Data.Function (on)
 import Data.Int as Int
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Newtype (class Newtype, un)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
@@ -141,9 +141,9 @@ render state =
             ]
           , HE.onClick $ HE.input $ WatchedClick idx
           ]
-          [ HH.text $ maybe ""
-              (\(DateString date) -> fromMaybe "" (show <$> file.latest) <> " watched " <> date)
-              file.watched
+          [ HH.text $ case file.watched of
+              Just (DateString date) -> "watched " <> date
+              Nothing -> maybe "" (\x -> " last: " <> show x) file.latest
           ]
       ]
 
@@ -189,8 +189,13 @@ eval (FetchData next) = do
     annotateLatest :: Array File -> Array File
     annotateLatest xs = updateLatest <$> xs
       where
+        watchedFiles :: Array File
+        watchedFiles = Array.filter (\x -> isJust x.watched) xs
+
         grouped :: Array (Maybe File)
-        grouped = maximumBy (compare `on` _.series) <$> Array.groupBy (eq `on` _.series) xs
+        grouped
+            = maximumBy (compare `on` _.series)
+          <$> Array.groupBy (eq `on` _.series) watchedFiles
         updateLatest x
           | match' <- \z -> z.series == x.series
           , match <- \y -> maybe false match' y
