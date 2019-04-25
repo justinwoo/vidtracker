@@ -1,7 +1,7 @@
 {
   "name": "my-project",
-  "set": "psc-0.12.3-20190306",
-  "source": "https://github.com/purescript/package-sets.git",
+  "set": "local",
+  "source": "",
   "depends": [
     "aff",
     "bifunctors",
@@ -28,6 +28,7 @@
     "record-format",
     "shoronpo",
     "simple-json",
+    "simple-json-utils",
     "string-parsers",
     "sunde",
     "test-unit",

@@ -5,6 +5,7 @@ npm-deps:
 	npm install
 
 purs-deps:
+	spago psc-package-insdhall
 	pp2n install
 
 watch:
