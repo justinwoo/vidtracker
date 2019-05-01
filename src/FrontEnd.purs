@@ -215,8 +215,9 @@ eval (UpdateFiles next) = do
 
         grouped :: Array (Maybe File)
         grouped
-            = maximumBy (compare `on` _.series)
-          <$> Array.groupBy (eq `on` _.series) watchedFiles
+            = maximumBy (compare `on` _.episode)
+          <$> Array.groupBy (eq `on` _.series)
+              (Array.sortWith _.series watchedFiles)
         updateLatest x
           | match' <- \z -> z.series == x.series
           , match <- \y -> maybe false match' y
