@@ -9,3 +9,20 @@ exports.addWindowKeyListener = function(effect) {
 exports.refreshPage = function() {
   window.location = window.location;
 };
+
+exports.scrollIntoView = function(selector) {
+  return function() {
+    var e = document.querySelector('div[title="' + selector + '"]');
+    if (e) {
+      if (e.scrollIntoViewIfNeeded) {
+        e.scrollIntoViewIfNeeded();
+      } else {
+        e.scrollIntoView();
+      }
+    }
+  };
+};
+
+exports.scrollToTop = function() {
+  window.scroll(0, 0);
+};

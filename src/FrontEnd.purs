@@ -51,6 +51,7 @@ type File =
 type State =
   -- files
   { files :: Array File
+  , filesData :: Array File
   , filesLoading :: Boolean
   , iconsLoading :: Boolean
   , grouped :: Boolean
@@ -60,6 +61,7 @@ type State =
 
 data Query a
   = FetchData a
+  | UpdateFiles a
   | OpenFile a
   | MarkFile a
   | ToggleWatched Path a
@@ -71,6 +73,7 @@ data Query a
 initialState :: State
 initialState =
   { files: []
+  , filesData: []
   , filesLoading: false
   , iconsLoading: false
   , grouped: false
@@ -141,6 +144,7 @@ render state =
       , HH.div
           [ HP.class_ $ HH.ClassName "name"
           , HE.onClick $ HE.input $ LinkClick idx
+          , HP.title (un Path file.name)
           ]
           [ HH.text $ un Path file.name ]
       , HH.div
@@ -176,9 +180,9 @@ eval (FetchData next) = do
   H.modify_ _ { filesLoading = true }
   attempt <- H.liftAff $ getFiles
   case attempt of
-    Right files -> H.modify_ _ { files = annotateLatest files, filesLoading = false }
+    Right filesData -> H.modify_ _ { filesData = filesData, filesLoading = false }
     Left e -> Console.error $ "Failed to fetch data: " <> show e
-  pure next
+  eval (UpdateFiles next)
   where
     getFiles = ado
       files <- get apiRoutes.files
@@ -195,6 +199,14 @@ eval (FetchData next) = do
       where
         parsed = hush $ runParser nameParser name
 
+eval (UpdateFiles next) = do
+  H.modify_ \s -> do
+    let annotated = annotateLatest s.filesData
+    if s.grouped
+      then s { files = groupFiles annotated }
+      else s { files = annotated }
+  pure next
+  where
     annotateLatest :: Array File -> Array File
     annotateLatest xs = updateLatest <$> xs
       where
@@ -211,6 +223,12 @@ eval (FetchData next) = do
           , Just (Just y) <- Array.find match grouped
             = x { latest = y.episode }
           | otherwise = x
+
+    groupFiles = Array.sortBy
+      (\x y
+        -> compare x.series y.series
+        <> compare x.episode y.episode
+      )
 
 eval (ToggleWatched name next) = do
   Console.log $ "Updating " <> un Path name
@@ -237,6 +255,14 @@ eval (EEQuery (DirectionEvent dir) next) = do
     Up -> H.modify_ \s -> do
       let cursor = max 0 (maybe 0 (_ - 1) s.cursor)
       s { cursor = Just cursor }
+  state <- H.get
+
+  case state.cursor of
+    Just cursor | cursor == 0 -> liftEffect $ scrollToTop
+    Just cursor | Just file <- Array.index state.files =<< state.cursor -> do
+      liftEffect $ scrollIntoView file.name
+    _ -> pure unit
+
   pure next
 
 eval (OpenFile next) = do
@@ -276,7 +302,7 @@ eval (EEQuery FetchIconsEvent next) = do
 
 eval (EEQuery ToggleGroupedEvent next) = do
   H.modify_ \s -> s { grouped = not s.grouped }
-  pure next
+  eval (UpdateFiles next)
 
 myButton :: H.Component HH.HTML Query Unit Void Aff
 myButton =
@@ -345,6 +371,10 @@ main = do
 foreign import refreshPage :: Effect Unit
 
 foreign import addWindowKeyListener :: (String -> Effect Unit) -> Effect Unit
+
+foreign import scrollIntoView :: Path -> Effect Unit
+
+foreign import scrollToTop :: Effect Unit
 
 prefixUrl :: String -> M.URL
 prefixUrl url = M.URL $ "http://localhost:3000" <> url
