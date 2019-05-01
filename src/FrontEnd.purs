@@ -53,6 +53,7 @@ type State =
   { files :: Array File
   , filesLoading :: Boolean
   , iconsLoading :: Boolean
+  , grouped :: Boolean
   -- counted by positions from the top
   , cursor :: Maybe Int
   }
@@ -72,6 +73,7 @@ initialState =
   { files: []
   , filesLoading: false
   , iconsLoading: false
+  , grouped: false
   , cursor: Nothing
   }
 
@@ -80,9 +82,15 @@ render state =
   HH.div []
     [ HH.h1_ [HH.text "vidtracker"]
     , header
-    , HH.div_ $ Array.mapWithIndex mkFile state.files
+    , HH.div_ $ Array.mapWithIndex mkFile files
     ]
   where
+    files = if state.grouped
+      then Array.sortBy
+        (\x y -> compare x.series y.series <> compare x.episode y.episode)
+        state.files
+      else state.files
+
     header = HH.div
       [ HP.class_ $ HH.ClassName "header" ]
       [ HH.div [ HP.class_ $ HH.ClassName "info" ] $
@@ -100,6 +108,7 @@ render state =
       , "I: fetch icons and reload page"
       , "files loading: " <> if state.filesLoading then "true" else "false"
       , "icons loading: " <> if state.iconsLoading then "true" else "false"
+      , "grouped by series: " <> if state.grouped then "true" else "false"
       ]
 
     recents = mkRecent <$> Array.take (Array.length infoLines) state.files
@@ -265,6 +274,10 @@ eval (EEQuery FetchIconsEvent next) = do
   H.liftEffect $ refreshPage
   pure next
 
+eval (EEQuery ToggleGroupedEvent next) = do
+  H.modify_ \s -> s { grouped = not s.grouped }
+  pure next
+
 myButton :: H.Component HH.HTML Query Unit Void Aff
 myButton =
   H.lifecycleComponent
@@ -286,6 +299,8 @@ data ExternalEvent
   | RefreshEvent
   -- call fetch icons on I (shift + i)
   | FetchIconsEvent
+  -- toggle grouping by show name
+  | ToggleGroupedEvent
 
 data Direction = Up | Down
 
@@ -301,6 +316,7 @@ keyboard _ = do
       "M" -> push MarkEvent
       "r" -> push RefreshEvent
       "I" -> push FetchIconsEvent
+      "g" -> push ToggleGroupedEvent
       _ -> pure unit
   pure event
 
