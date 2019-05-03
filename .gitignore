@@ -5,6 +5,7 @@
 /output/
 /generated-docs/
 /.psc*
+/.spago*
 /.psa*
 /build/
 /dist/icons
