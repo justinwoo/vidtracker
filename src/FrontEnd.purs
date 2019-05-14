@@ -32,7 +32,7 @@ import Routes (GetRoute, PostRoute, apiRoutes)
 import Simple.JSON as JSON
 import Text.Parsing.StringParser (runParser)
 import Type.Prelude (class IsSymbol, SProxy(..), reflectSymbol)
-import Types (Path(..))
+import Types (Path(..), WatchedData)
 import Web.Event.Event as E
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as ME
@@ -51,7 +51,8 @@ type File =
 type State =
   -- files
   { files :: Array File
-  , filesData :: Array File
+  , filesData :: Array Path
+  , watchedData :: Array WatchedData
   , filesLoading :: Boolean
   , iconsLoading :: Boolean
   , grouped :: Boolean
@@ -74,6 +75,7 @@ initialState :: State
 initialState =
   { files: []
   , filesData: []
+  , watchedData: []
   , filesLoading: false
   , iconsLoading: false
   , grouped: false
@@ -114,9 +116,9 @@ render state =
       , "grouped by series: " <> if state.grouped then "true" else "false"
       ]
 
-    recents = mkRecent <$> Array.take (Array.length infoLines) state.files
+    recents = mkRecent <$> Array.take (Array.length infoLines) state.watchedData
 
-    mkRecent file = mkDiv "recent" $ HH.text $ un Path file.name
+    mkRecent { path: Path name } = mkDiv "recent" $ HH.text name
 
     mkFile :: Int -> File -> _
     mkFile idx file = HH.div
@@ -178,17 +180,32 @@ eval (WatchedClick idx e next) = do
 
 eval (FetchData next) = do
   H.modify_ _ { filesLoading = true }
-  attempt <- H.liftAff $ getFiles
+  attempt <- H.liftAff getData
   case attempt of
-    Right filesData -> H.modify_ _ { filesData = filesData, filesLoading = false }
+    Right r -> H.modify_ _
+      { filesData = r.filesData
+      , watchedData = r.watchedData
+      , filesLoading = false
+      }
     Left e -> Console.error $ "Failed to fetch data: " <> show e
   eval (UpdateFiles next)
   where
-    getFiles = ado
-      files <- get apiRoutes.files
-      watched <- get apiRoutes.watched
-      in (\fs w -> mkFile w <$> fs) <$> files <*> watched
+    getData = do
+      filesData <- get apiRoutes.files
+      watchedData <- get apiRoutes.watched
+      pure $ { filesData: _, watchedData: _ }
+        <$> filesData
+        <*> watchedData
 
+eval (UpdateFiles next) = do
+  H.modify_ \s -> do
+    let files = mkFile s.watchedData <$> s.filesData
+    let annotated = annotateLatest files
+    if s.grouped
+      then s { files = groupFiles annotated }
+      else s { files = annotated }
+  pure next
+  where
     mkFile watched file@(Path name) =
       { name: Path name
       , watched: DateString <<< _.created <$> Array.find (\x -> x.path == file) watched
@@ -199,14 +216,6 @@ eval (FetchData next) = do
       where
         parsed = hush $ runParser nameParser name
 
-eval (UpdateFiles next) = do
-  H.modify_ \s -> do
-    let annotated = annotateLatest s.filesData
-    if s.grouped
-      then s { files = groupFiles annotated }
-      else s { files = annotated }
-  pure next
-  where
     annotateLatest :: Array File -> Array File
     annotateLatest xs = updateLatest <$> xs
       where
