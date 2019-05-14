@@ -8,10 +8,7 @@
   },
   "scripts": {
     "start": "parcel index.html",
-    "test": "pp2n test",
-    "build:get-icons": "pp2n bundle -m GetIcons -o get-icons.js",
-    "build:fe": "make build-fe",
-    "build": "pp2n build && npm run build:fe && npm run build:get-icons"
+    "test": "pp2n test"
   },
   "author": "",
   "license": "MIT",

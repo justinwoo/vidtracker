@@ -14,8 +14,6 @@
 /dist/index.map
 /.cache
 config.ini
-get-icons.js
-generate-css.js
 out.js.gz
 npm-debug.log
 fe-bundle.js

@@ -1,16 +1,12 @@
 build: npm-deps purs-deps
-	npm run build
+	pp2n build
+	make build-fe
 
 npm-deps:
 	npm install
 
 purs-deps:
-	spago psc-package-insdhall
-	pp2n install
-
-watch:
-	parcel build/index.js
+	pp2n install -j 100
 
 build-fe:
-	pp2n build
 	parcel build index.html
