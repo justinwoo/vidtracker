@@ -29,6 +29,7 @@ import Node.Path (concat)
 import Node.Platform (Platform(..))
 import Node.Process (exit, platform)
 import Prim.Row as Row
+import Prim.RowList (Cons, Nil, kind RowList)
 import Record as Record
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, FilePath, newDB)
@@ -39,7 +40,6 @@ import Simple.JSON.Utils (printMultipleErrors)
 import Sunde as Sunde
 import Tortellini (parsellIni, printUhOhSpagghettios)
 import Type.Prelude (class RowToList, Proxy(..), RLProxy(RLProxy))
-import Type.Row (Cons, Nil, kind RowList)
 import Types (FileData, GetIconsRequest, OpenRequest, Operation, Path(Path), RemoveRequest, WatchedData)
 
 data Error

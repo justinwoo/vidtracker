@@ -2,11 +2,10 @@ module FrontEnd where
 
 import Prelude
 
-import CSS as CSS
 import ChocoPie (runChocoPie)
 import Data.Array as Array
 import Data.Either (Either(..), hush)
-import Data.Foldable (maximumBy)
+import Data.Foldable (intercalate, maximumBy)
 import Data.Function (on)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
@@ -15,27 +14,23 @@ import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
+import Effect.Uncurried (EffectFn1)
 import FRP.Event (Event)
 import FRP.Event as Event
 import Global.Unsafe (unsafeEncodeURIComponent)
-import Halogen as H
-import Halogen.Aff as HA
-import Halogen.HTML as HH
-import Halogen.HTML.CSS as HCSS
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
-import Halogen.VDom.Driver (runUI)
 import Milkis as M
 import Milkis.Impl.Window (windowFetch)
 import NameParser (nameParser)
+import React.Basic as RB
+import React.Basic.DOM as R
+import React.Basic.DOM.Events as RE
+import React.Basic.Events (SyntheticEvent)
+import React.Basic.Events as Events
 import Routes (GetRoute, PostRoute, apiRoutes)
 import Simple.JSON as JSON
 import Text.Parsing.StringParser (runParser)
 import Type.Prelude (class IsSymbol, SProxy(..), reflectSymbol)
 import Types (Path(..), WatchedData)
-import Web.Event.Event as E
-import Web.UIEvent.MouseEvent (MouseEvent)
-import Web.UIEvent.MouseEvent as ME
 
 newtype DateString = DateString String
 derive instance newtypeDateString :: Newtype DateString _
@@ -60,16 +55,16 @@ type State =
   , cursor :: Maybe Int
   }
 
-data Query a
-  = FetchData a
-  | UpdateFiles a
-  | OpenFile a
-  | MarkFile a
-  | ToggleWatched Path a
-  | SetCursor Int a
-  | LinkClick Int MouseEvent a
-  | WatchedClick Int MouseEvent a
-  | EEQuery ExternalEvent a
+data Action
+  = FetchData
+  | UpdateFiles
+  | OpenFile
+  | MarkFile
+  | ToggleWatched Path
+  | SetCursor Int
+  | LinkClick Int
+  | WatchedClick Int
+  | EEQuery ExternalEvent
 
 initialState :: State
 initialState =
@@ -82,12 +77,32 @@ initialState =
   , cursor: Nothing
   }
 
-render :: State -> H.ComponentHTML Query
-render state =
-  HH.div []
-    [ HH.h1_ [HH.text "vidtracker"]
+type Props = {}
+
+type Self = RB.Self Props State
+
+div' :: String -> Array RB.JSX -> RB.JSX
+div' className children = R.div { className, children }
+
+capture_ :: Aff Unit -> EffectFn1 SyntheticEvent Unit
+capture_ = RE.capture_ <<< launchAff_
+
+handler_ :: Aff Unit -> EffectFn1 SyntheticEvent Unit
+handler_ = Events.handler_ <<< launchAff_
+
+readState' :: Self -> Aff State
+readState' = liftEffect <<< RB.readState
+
+mkIconURL :: String -> String
+mkIconURL series = "url(\"" <> un M.URL (prefixUrl $ iconsPath) <> "\")"
+  where iconsPath = "/icons/" <> unsafeEncodeURIComponent series
+
+render :: Self -> RB.JSX
+render self@{state} =
+  R.div_
+    [ R.h1_ [R.text "vidtracker"]
     , header
-    , HH.div_ $ Array.mapWithIndex mkFile files
+    , R.div_ $ Array.mapWithIndex mkFile files
     ]
   where
     files = if state.grouped
@@ -96,15 +111,12 @@ render state =
         state.files
       else state.files
 
-    header = HH.div
-      [ HP.class_ $ HH.ClassName "header" ]
-      [ HH.div [ HP.class_ $ HH.ClassName "info" ] $
-          [ HH.h3_ [ HH.text "Info:" ] ] <> infoLines
-      , HH.div [ HP.class_ $ HH.ClassName "recents" ] $
-          [ HH.h3_ [ HH.text "Recently watched:" ] ] <> recents
+    header = div' "header"
+      [ div' "info" $ [ R.h3_ [ R.text "Info:" ] ] <> infoLines
+      , div' "recents" $ [ R.h3_ [ R.text "Recently watched:" ] ] <> recents
       ]
 
-    infoLines = HH.span_ <<< pure <<< HH.text <$>
+    infoLines = R.span_ <<< pure <<< R.text <$>
       [ "o: open current file"
       , "k: move cursor up"
       , "j: move cursor down"
@@ -118,77 +130,71 @@ render state =
 
     recents = mkRecent <$> Array.take (Array.length infoLines) state.watchedData
 
-    mkRecent { path: Path name } = mkDiv "recent" $ HH.text name
+    mkRecent { path: Path name } = div' "recent" [ R.text name ]
 
     mkFile :: Int -> File -> _
-    mkFile idx file = HH.div
-      [ HP.classes
-          [ HH.ClassName "file"
-          , HH.ClassName case state.cursor of
+    mkFile idx file = R.div
+      { className: intercalate " "
+          [ "file"
+          , case state.cursor of
               Just pos | pos == idx -> "cursor"
               _ -> ""
-          , HH.ClassName case file.watched of
+          , case file.watched of
               Just _ -> "done"
               Nothing -> ""
           ]
-      , HP.title $ "latest watched: " <> fromMaybe "unknown" (show <$> file.latest)
-      , HE.onClick $ HE.input_ $ SetCursor idx
-      ]
-      [ HH.div
-          [ HP.class_ $ HH.ClassName "icon"
-          , HCSS.style do
-              case file.series of
-                Just series ->
-                  CSS.backgroundImage (CSS.url $ un M.URL $ prefixUrl $ "/icons/" <> unsafeEncodeURIComponent series)
-                Nothing ->
-                  pure mempty
-          ] []
-      , HH.div
-          [ HP.class_ $ HH.ClassName "name"
-          , HE.onClick $ HE.input $ LinkClick idx
-          , HP.title (un Path file.name)
-          ]
-          [ HH.text $ un Path file.name ]
-      , HH.div
-          [ HP.classes $ HH.ClassName <$>
-            [ "watched"
-            , maybe "" (const "has-date") file.watched
-            ]
-          , HE.onClick $ HE.input $ WatchedClick idx
-          ]
-          [ HH.text $ case file.watched of
-              Just (DateString date) -> "watched " <> date
-              Nothing -> maybe "" (\x -> " last: " <> show x) file.latest
-          ]
-      ]
+      , title : "latest watched: " <> fromMaybe "unknown" (show <$> file.latest)
+      , onClick: handler_ $ eval self (SetCursor idx)
+      , children:
+          [ R.div
+              { className: "icon"
+              , style:
+                  case file.series of
+                    Just series -> R.css { backgroundImage: mkIconURL series }
+                    Nothing -> R.css {}
+              }
+          , R.div
+              { className: "name"
+              , title: (un Path file.name)
+              , children: [ R.text $ un Path file.name ]
+              , onClick: capture_ $ eval self (LinkClick idx)
+              }
+          , R.div
+              { className: intercalate " "
+                [ "watched"
+                , maybe "" (const "has-date") file.watched
+                ]
+              , onClick: capture_ $ eval self (WatchedClick idx)
+              , children:
+                  [ R.text $ case file.watched of
+                      Just (DateString date) -> "watched " <> date
+                      Nothing -> maybe "" (\x -> " last: " <> show x) file.latest
+                  ]
+              }
+        ]
+    }
 
-    mkDiv className e = HH.div
-      [HP.class_ $ HH.ClassName className]
-      [e]
+eval :: Self -> Action -> Aff Unit
 
-eval :: Query ~> H.ComponentDSL State Query Void Aff
+eval self (LinkClick idx) = do
+  _ <- eval self (SetCursor idx)
+  eval self OpenFile
 
-eval (LinkClick idx e next) = do
-  H.liftEffect $ E.preventDefault $ ME.toEvent e
-  _ <- eval (SetCursor idx next)
-  eval (OpenFile next)
+eval self (WatchedClick idx) = do
+  _ <- eval self (SetCursor idx)
+  eval self MarkFile
 
-eval (WatchedClick idx e next) = do
-  H.liftEffect $ E.preventDefault $ ME.toEvent e
-  _ <- eval (SetCursor idx next)
-  eval (MarkFile next)
-
-eval (FetchData next) = do
-  H.modify_ _ { filesLoading = true }
-  attempt <- H.liftAff getData
-  case attempt of
-    Right r -> H.modify_ _
+eval self FetchData = do
+  liftEffect $ self.setState _ { filesLoading = true }
+  attempt <- getData
+  liftEffect $ case attempt of
+    Right r -> self.setState _
       { filesData = r.filesData
       , watchedData = r.watchedData
       , filesLoading = false
       }
     Left e -> Console.error $ "Failed to fetch data: " <> show e
-  eval (UpdateFiles next)
+  eval self UpdateFiles
   where
     getData = do
       filesData <- get apiRoutes.files
@@ -197,14 +203,13 @@ eval (FetchData next) = do
         <$> filesData
         <*> watchedData
 
-eval (UpdateFiles next) = do
-  H.modify_ \s -> do
+eval self UpdateFiles = do
+  liftEffect $ self.setState \s -> do
     let files = mkFile s.watchedData <$> s.filesData
     let annotated = annotateLatest files
     if s.grouped
       then s { files = groupFiles annotated }
       else s { files = annotated }
-  pure next
   where
     mkFile watched file@(Path name) =
       { name: Path name
@@ -240,90 +245,89 @@ eval (UpdateFiles next) = do
         <> compare x.episode y.episode
       )
 
-eval (ToggleWatched name next) = do
+eval self (ToggleWatched name) = do
+  state <- readState' self
   Console.log $ "Updating " <> un Path name
-  s <- H.get
-  case Array.find (\x -> x.name == name) s.files of
+  case Array.find (\x -> x.name == name) state.files of
     Just file -> do
-      _ <- H.liftAff $ post apiRoutes.update
+      _ <- post apiRoutes.update
         { path: file.name
         , watched: maybe true (const false) file.watched
         }
       pure unit
     Nothing -> Console.error $ "Could not find file named " <> un Path name
-  eval (FetchData next)
+  eval self FetchData
 
-eval (SetCursor idx next) = do
-  H.modify_ _ { cursor = Just idx }
-  pure next
+eval self (SetCursor idx) = do
+  liftEffect $ self.setState _ { cursor = Just idx }
 
-eval (EEQuery (DirectionEvent dir) next) = do
-  case dir of
-    Down -> H.modify_ \s -> do
+eval self (EEQuery (DirectionEvent dir)) = do
+  liftEffect case dir of
+    Down -> self.setState \s -> do
       let cursor = min (Array.length s.files) (maybe 0 (_ + 1) s.cursor)
       s { cursor = Just cursor }
-    Up -> H.modify_ \s -> do
+    Up -> self.setState \s -> do
       let cursor = max 0 (maybe 0 (_ - 1) s.cursor)
       s { cursor = Just cursor }
-  state <- H.get
 
-  case state.cursor of
+  newState <- liftEffect $ RB.readState self
+  case newState.cursor of
     Just cursor | cursor == 0 -> liftEffect $ scrollToTop
-    Just cursor | Just file <- Array.index state.files =<< state.cursor -> do
+    Just cursor | Just file <- Array.index newState.files =<< newState.cursor -> do
       liftEffect $ scrollIntoView file.name
     _ -> pure unit
 
-  pure next
-
-eval (OpenFile next) = do
-  s <- H.get
-  case s.cursor of
+eval self OpenFile = do
+  state <- readState' self
+  case state.cursor of
     Just pos
-      | Just file <- Array.index s.files pos
+      | Just file <- Array.index state.files pos
       -> do
       Console.log $ "Opening file: " <> un Path file.name
-      _ <- H.liftAff $ post apiRoutes.open { path: file.name }
-      pure next
-    _ -> pure next
+      _ <- post apiRoutes.open { path: file.name }
+      pure unit
+    _ -> pure unit
 
-eval (EEQuery OpenEvent next) = eval (OpenFile next)
+eval self (EEQuery OpenEvent) = eval self OpenFile
 
-eval (MarkFile next) = do
-  s <- H.get
-  case s.cursor of
+eval self MarkFile = do
+  state <- readState' self
+  case state.cursor of
     Just pos
-      | Just file <- Array.index s.files pos
-      -> eval (ToggleWatched file.name next)
-    _ -> pure next
+      | Just file <- Array.index state.files pos
+      -> eval self (ToggleWatched file.name)
+    _ -> pure unit
 
-eval (EEQuery MarkEvent next) = eval (MarkFile next)
+eval self (EEQuery MarkEvent) = eval self MarkFile
 
-eval (EEQuery RefreshEvent next) = do
+eval self (EEQuery RefreshEvent) = do
   Console.log "RefreshEvent"
-  eval (FetchData next)
+  eval self FetchData
 
-eval (EEQuery FetchIconsEvent next) = do
+eval self (EEQuery FetchIconsEvent) = do
   Console.log "FetchIconsEvent"
-  H.modify_ _ { iconsLoading = true }
-  result <- H.liftAff $ post apiRoutes.getIcons {}
-  H.modify_ _ { iconsLoading = false }
-  H.liftEffect $ refreshPage
-  pure next
+  liftEffect $ self.setState _ { iconsLoading = true }
+  result <- post apiRoutes.getIcons {}
+  liftEffect $ self.setState _ { iconsLoading = false }
+  liftEffect $ refreshPage
 
-eval (EEQuery ToggleGroupedEvent next) = do
-  H.modify_ \s -> s { grouped = not s.grouped }
-  eval (UpdateFiles next)
+eval self (EEQuery ToggleGroupedEvent) = do
+  liftEffect $ self.setState \s -> s { grouped = not s.grouped }
+  eval self UpdateFiles
 
-myButton :: H.Component HH.HTML Query Unit Void Aff
-myButton =
-  H.lifecycleComponent
-    { initialState: const initialState
-    , render
-    , eval
-    , initializer: Just (H.action FetchData)
-    , finalizer: Nothing
-    , receiver: const Nothing
-    }
+_ui :: RB.Component Props
+_ui = RB.createComponent "UI"
+
+mkUI :: Event ExternalEvent -> Props -> RB.JSX
+mkUI externalEvents = RB.make _ui
+  { initialState: initialState
+  , render: render
+  , didMount: \self -> do
+      _ <- Event.subscribe externalEvents \ee -> do
+        launchAff_ $ eval self (EEQuery ee)
+      launchAff_ $ eval self FetchData
+  }
+
 data ExternalEvent
   -- move cursor on j/k
   = DirectionEvent Direction
@@ -356,15 +360,9 @@ keyboard _ = do
       _ -> pure unit
   pure event
 
-halogen :: Event ExternalEvent -> Effect (Event Unit)
-halogen externalEvents = do
-  HA.runHalogenAff do
-    body <- HA.awaitBody
-    io <- runUI myButton unit body
-    _ <- liftEffect $ Event.subscribe externalEvents \ee -> do
-      launchAff_ $ io.query $ H.action $ EEQuery ee
-      pure $ mempty :: Event Unit
-    pure unit
+view :: Event ExternalEvent -> Effect (Event Unit)
+view externalEvents = do
+  renderJSX (mkUI externalEvents {})
   mempty
 
 main :: Effect Unit
@@ -374,9 +372,11 @@ main = do
   where
     mkSink sources =
       { keyboard: mempty :: Event Unit
-      , halogen: sources.keyboard
+      , view: sources.keyboard
       }
-    drivers = {keyboard, halogen}
+    drivers = {keyboard, view}
+
+foreign import renderJSX :: RB.JSX -> Effect Unit
 
 foreign import refreshPage :: Effect Unit
 
