@@ -1,10 +1,10 @@
-var ReactDOM = require('react-dom');
+var ReactDOM = require("react-dom");
 
-exports.renderJSX = function (jsx) {
-  return function () {
-    ReactDOM.render(jsx, document.getElementById('app'))
-  }
-}
+exports.renderJSX = function(jsx) {
+  return function() {
+    ReactDOM.render(jsx, document.getElementById("app"));
+  };
+};
 
 exports.addWindowKeyListener = function(effect) {
   return function() {

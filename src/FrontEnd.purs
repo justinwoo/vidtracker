@@ -11,7 +11,7 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Newtype (class Newtype, un)
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_)
+import Effect.Aff (Aff, launchAff_, makeAff)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Uncurried (EffectFn1)
@@ -177,15 +177,15 @@ render self@{state} =
 eval :: Self -> Action -> Aff Unit
 
 eval self (LinkClick idx) = do
-  _ <- eval self (SetCursor idx)
+  eval self (SetCursor idx)
   eval self OpenFile
 
 eval self (WatchedClick idx) = do
-  _ <- eval self (SetCursor idx)
+  eval self (SetCursor idx)
   eval self MarkFile
 
 eval self FetchData = do
-  liftEffect $ self.setState _ { filesLoading = true }
+  setStateAff self _ { filesLoading = true }
   attempt <- getData
   liftEffect $ case attempt of
     Right r -> self.setState _
@@ -204,7 +204,7 @@ eval self FetchData = do
         <*> watchedData
 
 eval self UpdateFiles = do
-  liftEffect $ self.setState \s -> do
+  setStateAff self \s -> do
     let files = mkFile s.watchedData <$> s.filesData
     let annotated = annotateLatest files
     if s.grouped
@@ -259,7 +259,7 @@ eval self (ToggleWatched name) = do
   eval self FetchData
 
 eval self (SetCursor idx) = do
-  liftEffect $ self.setState _ { cursor = Just idx }
+  setStateAff self _ { cursor = Just idx }
 
 eval self (EEQuery (DirectionEvent dir)) = do
   liftEffect case dir of
@@ -306,13 +306,13 @@ eval self (EEQuery RefreshEvent) = do
 
 eval self (EEQuery FetchIconsEvent) = do
   Console.log "FetchIconsEvent"
-  liftEffect $ self.setState _ { iconsLoading = true }
+  setStateAff self _ { iconsLoading = true }
   result <- post apiRoutes.getIcons {}
-  liftEffect $ self.setState _ { iconsLoading = false }
+  setStateAff self _ { iconsLoading = false }
   liftEffect $ refreshPage
 
 eval self (EEQuery ToggleGroupedEvent) = do
-  liftEffect $ self.setState \s -> s { grouped = not s.grouped }
+  setStateAff self \s -> s { grouped = not s.grouped }
   eval self UpdateFiles
 
 _ui :: RB.Component Props
@@ -375,6 +375,11 @@ main = do
       , view: sources.keyboard
       }
     drivers = {keyboard, view}
+
+setStateAff :: Self -> (State -> State) -> Aff Unit
+setStateAff self fn = makeAff \cb -> do
+  self.setStateThen fn do cb (Right unit)
+  mempty
 
 foreign import renderJSX :: RB.JSX -> Effect Unit
 
