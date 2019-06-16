@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "parcel index.html",
-    "test": "pp2n test"
+    "test": "spago test"
   },
   "author": "",
   "license": "MIT",
