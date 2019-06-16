@@ -9,4 +9,4 @@ purs-deps:
 	spago2nix install -j 100
 
 build-fe:
-	parcel build index.html
+	node_modules/.bin/parcel build index.html
