@@ -2,6 +2,8 @@ module Main where
 
 import Prelude
 
+import Bingsu ((<<>>))
+import Bingsu as B
 import Config as C
 import Control.Monad.Except (ExceptT, except, runExceptT)
 import Data.Array (filter, sortBy)
@@ -19,7 +21,6 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Foreign (Foreign)
-import Jajanmen as J
 import Makkori as M
 import Node.ChildProcess (Exit(..), defaultExecOptions, defaultSpawnOptions, exec, spawn)
 import Node.Encoding (Encoding(..))
@@ -34,12 +35,11 @@ import Record as Record
 import Routes (GetRequest, PostRequest, Route, apiRoutes)
 import SQLite3 (DBConnection, FilePath, newDB)
 import SQLite3 as SQL
-import Shoronpo (formatSymbol, intercalateRecordLabels, intercalateRowLabels, intercalateRowValues)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, writeJSON)
 import Simple.JSON.Utils (printMultipleErrors)
 import Sunde as Sunde
 import Tortellini (parsellIni, printUhOhSpagghettios)
-import Type.Prelude (class RowToList, Proxy(..), RLProxy(RLProxy))
+import Type.Prelude (class RowToList, RLProxy(RLProxy))
 import Types (FileData, GetIconsRequest, OpenRequest, Operation, Path(Path), RemoveRequest, WatchedData)
 
 data Error
@@ -76,11 +76,8 @@ readFail ctr f = except <<< lmap (ctr <<< printMultipleErrors) $ read f
 
 getWatchedData :: Config -> ExceptT Error Aff (Array WatchedData)
 getWatchedData {db} = do
-  let
-    template = SProxy :: SProxy "select {columns} from watched order by created desc"
-    query = formatSymbol template
-      { columns: intercalateRecordLabels (Proxy :: Proxy WatchedData) (SProxy :: SProxy ", ") }
-  results <- liftAff $ J.queryDB db query {}
+  let query = B.literal "select path, created from watched order by created desc"
+  results <- liftAff $ B.queryDB db query {}
   readFail ServerError results
 
 getIconsData :: Config -> GetIconsRequest -> ExceptT Error Aff Operation
@@ -92,23 +89,21 @@ getIconsData {db} _ = do
 
 updateWatched :: Config -> FileData -> ExceptT Error Aff (Array WatchedData)
 updateWatched config@{db} ur = do
-  let params = {"$path": unwrap ur.path}
+  let params = { path: unwrap ur.path }
   _ <- liftAff $ if ur.watched
     then do
       let
-        fields =
-          { path: SProxy :: SProxy "$path"
-          , created: SProxy :: SProxy "datetime()"
-          }
-        template = SProxy :: SProxy "insert or replace into watched ({fields}) values ({values})"
-        query = formatSymbol template
-          { fields: intercalateRowLabels fields (SProxy :: SProxy ", ")
-          , values: intercalateRowValues fields (SProxy :: SProxy ", ")
-          }
-      void $ J.queryDB db query params
+        query
+            = B.literal "insert or replace into watched ( path, created ) values ("
+          <<>> B.param (B.Param :: _ "path" String)
+          <<>> B.literal ", datetime() )"
+      void $ B.queryDB db query params
     else do
-      let queryString = SProxy :: SProxy "delete from watched where path = $path"
-      void $ J.queryDB db queryString params
+      let
+        queryString
+             = B.literal "delete from watched where path = "
+          <<>> B.param (B.Param :: _ "path" String)
+      void $ B.queryDB db queryString params
   getWatchedData config
 
 openFile :: Config -> OpenRequest -> ExceptT Error Aff (Operation)

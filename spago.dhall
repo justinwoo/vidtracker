@@ -1,12 +1,14 @@
-{ name =
+{ sources =
+    [ "src/**/*.purs", "test/**/*.purs" ]
+, name =
     "my-project"
 , dependencies =
     [ "aff"
+    , "bingsu"
     , "choco-pie"
     , "console"
     , "debug"
     , "effect"
-    , "jajanmen"
     , "makkori"
     , "milkis"
     , "naporitan"
@@ -15,10 +17,10 @@
     , "node-sqlite3"
     , "psci-support"
     , "react-basic"
-    , "shoronpo"
     , "simple-json"
     , "simple-json-utils"
     , "sunde"
+    , "test-unit"
     , "toppokki"
     , "tortellini"
     ]
