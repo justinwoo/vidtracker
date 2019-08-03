@@ -271,11 +271,11 @@ let
 
     "filterable" = pkgs.stdenv.mkDerivation {
         name = "filterable";
-        version = "v3.0.1";
+        version = "v3.0.2";
         src = pkgs.fetchgit {
           url = "https://github.com/LiamGoodacre/purescript-filterable.git";
-          rev = "0b9b0994704f29e75072e6b3e6b8658b93b35ab8";
-          sha256 = "1sj0r49pzkiibrin28p2ikh3z0884kzqa9p6glzh5hxh6smx8ihb";
+          rev = "b7bff31576261bc66bf29bfeca7679c2b107d68e";
+          sha256 = "0pn66mrgrpnlpd1lmywj5f0hbm9mnyjahqj276vz5v2xzlr0q63g";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -535,11 +535,11 @@ let
 
     "milkis" = pkgs.stdenv.mkDerivation {
         name = "milkis";
-        version = "v7.0.1";
+        version = "v7.1.0";
         src = pkgs.fetchgit {
           url = "https://github.com/justinwoo/purescript-milkis.git";
-          rev = "a6ce83d723ba21bbbd1452a9c174b86461d7d934";
-          sha256 = "1sivczm4afmw0cdq0nds27803xzlbkslrfb3ca160hfn13lns67r";
+          rev = "9306cc830999b212082bcc586ce7d4a5c59b7055";
+          sha256 = "0ixa7srq35cxdvsws2y7k8qbcxc87kqlzgyw6iqsjm93zr6lnnv6";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -547,11 +547,11 @@ let
 
     "motsunabe" = pkgs.stdenv.mkDerivation {
         name = "motsunabe";
-        version = "v1.0.0";
+        version = "v2.0.0";
         src = pkgs.fetchgit {
           url = "https://github.com/justinwoo/purescript-motsunabe.git";
-          rev = "55573e553304883f7c3a2831f23cc6d1a6e4e238";
-          sha256 = "04i89kvb6d8cz71hqdk1avxrdfmy9zvf45qlnk3bz5xwi123bx8i";
+          rev = "d016e6319fef40119abba726e31d066e7c211875";
+          sha256 = "03r81xs0gw5nchm93ap2lpirkng8bzgsb8xc5jxlii4sw8wn8ndh";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -607,11 +607,11 @@ let
 
     "node-fs" = pkgs.stdenv.mkDerivation {
         name = "node-fs";
-        version = "v5.0.0";
+        version = "v5.0.1";
         src = pkgs.fetchgit {
           url = "https://github.com/purescript-node/purescript-node-fs.git";
-          rev = "a8380b56acab3202587259ea259ea195cb440774";
-          sha256 = "1hkg8j4zkyq71g2bn3vpfqb8x49rdd9k0ayv3zf6l8k80gp3qigx";
+          rev = "02d610f237dc130edb5ee594fd46b16c691b79eb";
+          sha256 = "0i3bd7aw16vyb5sh5fzlvgg9q6cjdvmnfs57in6rxm34z8d8c0p8";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -631,11 +631,11 @@ let
 
     "node-http" = pkgs.stdenv.mkDerivation {
         name = "node-http";
-        version = "v5.0.1";
+        version = "v5.0.2";
         src = pkgs.fetchgit {
           url = "https://github.com/purescript-node/purescript-node-http.git";
-          rev = "9a6d80f236fed494dce2d438e410233fa2183307";
-          sha256 = "05kg86mqvww630xwf5p7qahs059ksfsnhq6ziizzfsbbd9h6kqsl";
+          rev = "b18d054de436ad589d41acee0aca7f3bd6762aab";
+          sha256 = "0jr9mm0kdvkd3nf1g4l8w9p7n16qqji03fg1agxn7hngr4ja43pw";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -679,11 +679,11 @@ let
 
     "node-streams" = pkgs.stdenv.mkDerivation {
         name = "node-streams";
-        version = "v4.0.0";
+        version = "v4.0.1";
         src = pkgs.fetchgit {
           url = "https://github.com/purescript-node/purescript-node-streams.git";
-          rev = "bebf20b0e50d9a564dd98e13baaee67692b331d6";
-          sha256 = "098wdq0rj4nkc470fwmiaars7vxac9n1dh4d82jrji3m77n473da";
+          rev = "88740eeda2017d3ddcde50eea59d57c7749d8524";
+          sha256 = "12dki2li0d7s54kvcr6gksb5nxf6kzs93gwxnq4bh1flri8p0i7r";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -739,11 +739,11 @@ let
 
     "numbers" = pkgs.stdenv.mkDerivation {
         name = "numbers";
-        version = "v6.0.0";
+        version = "v7.0.0";
         src = pkgs.fetchgit {
           url = "https://github.com/sharkdp/purescript-numbers.git";
-          rev = "a37f671cf219d3288b7bcca0b9ab9ff7e7dc5e5a";
-          sha256 = "1kzdg69llbmrccmgwrpfiq6hr6jdg2zl40qgzj10nzbhgqrbv2y1";
+          rev = "6262a5f17dcdfba11dfae03f4fa8eec02f7ed29f";
+          sha256 = "1l9s22fkjf7wc0zd3wjax4hlif7gqh6ij0ijb8sq20mfh2xl4hj8";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -883,11 +883,11 @@ let
 
     "react-basic" = pkgs.stdenv.mkDerivation {
         name = "react-basic";
-        version = "v9.0.1";
+        version = "v11.0.0";
         src = pkgs.fetchgit {
           url = "https://github.com/lumihq/purescript-react-basic.git";
-          rev = "7c3f46ddd652c6efec8bc444a185e2446bd79941";
-          sha256 = "0jrb5wjg9fqkg8jxcryzccg19mxxsvlbd7ay00njmr2m51wgsvkl";
+          rev = "bb3cfcbde081f75f4f3e1d04f0a83655f09af437";
+          sha256 = "133kfzp78x6vd6v5b05ph9p08pj4mxiv28hrchv13hn0ndhhm6fx";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -979,11 +979,11 @@ let
 
     "sunde" = pkgs.stdenv.mkDerivation {
         name = "sunde";
-        version = "v1.0.0";
+        version = "v2.0.0";
         src = pkgs.fetchgit {
           url = "https://github.com/justinwoo/purescript-sunde.git";
-          rev = "0342baae7d3d175bfc089ac1d2fcc10cfef18091";
-          sha256 = "1s62al6ark10hqc6kdz3nqarblpa6fmdy5kb3bjlxsa8nib436pa";
+          rev = "e9c898ac0ffd5e61d82a6c02606ab84241278709";
+          sha256 = "051kfqc06fbhavd3anvfhi5wfj76a6q4piis4lplypaw9g4n64l2";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -1210,6 +1210,8 @@ let
 
   getGlob = pkg: ''\".spago/${pkg.name}/${pkg.version}/src/**/*.purs\"'';
 
+  getStoreGlob = pkg: ''\"${pkg.outPath}/src/**/*.purs\"'';
+
 in {
   inherit inputs;
 
@@ -1229,6 +1231,16 @@ in {
       >>$out echo "echo building project..."
       >>$out echo "purs compile \"\$@\" ${builtins.toString (
         builtins.map getGlob (builtins.attrValues inputs))}"
+      >>$out echo "echo done."
+      chmod +x $out
+  '';
+
+  buildFromNixStore = pkgs.runCommand "build-from-store" {} ''
+      >>$out echo "#!/usr/bin/env bash"
+      >>$out echo
+      >>$out echo "echo building project using sources from nix store..."
+      >>$out echo "purs compile \"\$@\" ${builtins.toString (
+        builtins.map getStoreGlob (builtins.attrValues inputs))}"
       >>$out echo "echo done."
       chmod +x $out
   '';

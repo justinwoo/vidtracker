@@ -82,7 +82,12 @@ getWatchedData {db} = do
 
 getIconsData :: Config -> GetIconsRequest -> ExceptT Error Aff Operation
 getIconsData {db} _ = do
-  result <- liftAff $ Sunde.spawn "node" ["get-icons.js"] defaultSpawnOptions
+  result <- liftAff $ Sunde.spawn
+    { cmd: "node"
+    , args: ["get-icons.js"]
+    , stdin: Nothing
+    }
+    defaultSpawnOptions
   pure $ case result.exit of
     Normally 0 -> {success: true}
     _ -> {success: false}
