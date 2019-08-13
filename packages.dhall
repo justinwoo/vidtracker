@@ -10,4 +10,5 @@ in      upstream
             , version =
                 "v0.1.0"
             }
+        , milkis = upstream.milkis // { version = "v7.2.1" }
         }
