@@ -535,11 +535,11 @@ let
 
     "milkis" = pkgs.stdenv.mkDerivation {
         name = "milkis";
-        version = "v7.1.0";
+        version = "v7.2.1";
         src = pkgs.fetchgit {
           url = "https://github.com/justinwoo/purescript-milkis.git";
-          rev = "9306cc830999b212082bcc586ce7d4a5c59b7055";
-          sha256 = "0ixa7srq35cxdvsws2y7k8qbcxc87kqlzgyw6iqsjm93zr6lnnv6";
+          rev = "7e524d44005ccb6f19c28d6c61fe1488ba637938";
+          sha256 = "0zn6n4gznv8bx4c49fb0mp63szpi9b8fagyx8x6hh1yr8ax2vp8g";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
