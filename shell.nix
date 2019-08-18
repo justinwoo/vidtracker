@@ -11,5 +11,5 @@ let
   };
 
 in pkgs.mkShell {
-  buildInputs = [ easy-ps.purs easy-ps.spago easy-ps.spago2nix ];
+  buildInputs = [ easy-ps.purs easy-ps.spago easy-ps.spago2nix pkgs.cacert ];
 }
