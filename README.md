@@ -1,7 +1,5 @@
 # vidtracker
 
-[![Build Status](https://travis-ci.org/justinwoo/vidtracker.svg?branch=master)](https://travis-ci.org/justinwoo/vidtracker)
-
 blog post about this [here](http://qiita.com/kimagure/items/b576b5bfe370180599f8)
 
 more up-to-date blog post about the routing part of this [here](https://qiita.com/kimagure/items/bb9bd3e4ffe1bba4c214)
