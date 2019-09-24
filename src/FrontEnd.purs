@@ -8,7 +8,7 @@ import Data.Either (Either(..), hush)
 import Data.Foldable (intercalate, maximumBy)
 import Data.Function (on)
 import Data.Int as Int
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (class Newtype, un)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, makeAff)
@@ -51,6 +51,7 @@ type State =
   , filesLoading :: Boolean
   , iconsLoading :: Boolean
   , grouped :: Boolean
+  , filterWatched :: Boolean
   -- counted by positions from the top
   , cursor :: Maybe Int
   }
@@ -74,6 +75,7 @@ initialState =
   , filesLoading: false
   , iconsLoading: false
   , grouped: false
+  , filterWatched: false
   , cursor: Nothing
   }
 
@@ -105,11 +107,15 @@ render self@{state} =
     , R.div_ $ Array.mapWithIndex mkFile files
     ]
   where
-    files = if state.grouped
-      then Array.sortBy
-        (\x y -> compare x.series y.series <> compare x.episode y.episode)
-        state.files
-      else state.files
+    groupedFiles = if state.grouped
+      then Array.sortBy (on compare _.series <> on compare _.episode)
+      else identity
+
+    filterWatched = if state.filterWatched
+      then Array.filter (isNothing <<< _.watched)
+      else identity
+
+    files = filterWatched $ groupedFiles state.files
 
     header = div' "header"
       [ div' "info" $ [ R.h3_ [ R.text "Info:" ] ] <> infoLines
@@ -126,14 +132,22 @@ render self@{state} =
       , "files loading: " <> if state.filesLoading then "true" else "false"
       , "icons loading: " <> if state.iconsLoading then "true" else "false"
       , "grouped by series: " <> if state.grouped then "true" else "false"
+      , "filtering watched: " <> if state.filterWatched then "true" else "false"
       ]
 
     recents = mkRecent <$> Array.take (Array.length infoLines) state.watchedData
 
     mkRecent { path: Path name } = div' "recent" [ R.text name ]
 
-    mkFile :: Int -> File -> _
-    mkFile idx file = R.div
+    mkFile :: Int -> File -> RB.JSX
+    mkFile idx file = RB.keyed (un Path file.name) $ fileElement idx file self
+
+fileElement :: Int -> File -> Self -> RB.JSX
+fileElement idx file self =
+  let
+    state = self.state
+  in
+    R.div
       { className: intercalate " "
           [ "file"
           , case state.cursor of
@@ -315,6 +329,10 @@ eval self (EEQuery ToggleGroupedEvent) = do
   setStateAff self \s -> s { grouped = not s.grouped }
   eval self UpdateFiles
 
+eval self (EEQuery ToggleFilterWatched) = do
+  setStateAff self \s -> s { filterWatched = not s.filterWatched }
+  eval self UpdateFiles
+
 _ui :: RB.Component Props
 _ui = RB.createComponent "UI"
 
@@ -341,6 +359,8 @@ data ExternalEvent
   | FetchIconsEvent
   -- toggle grouping by show name
   | ToggleGroupedEvent
+  -- toggle filtering watched items
+  | ToggleFilterWatched
 
 data Direction = Up | Down
 
@@ -352,6 +372,7 @@ keyboard _ = do
       "o" -> push OpenEvent
       "k" -> push $ DirectionEvent Up
       "j" -> push $ DirectionEvent Down
+      "f" -> push ToggleFilterWatched
       "W" -> push MarkEvent
       "M" -> push MarkEvent
       "r" -> push RefreshEvent
