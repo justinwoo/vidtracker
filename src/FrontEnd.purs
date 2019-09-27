@@ -413,7 +413,7 @@ foreign import scrollIntoView :: Path -> Effect Unit
 foreign import scrollToTop :: Effect Unit
 
 prefixUrl :: String -> M.URL
-prefixUrl url = M.URL $ "http://localhost:3000" <> url
+prefixUrl url = M.URL $ "http://localhost:4567" <> url
 
 get :: forall res url. JSON.ReadForeign res => IsSymbol url => GetRoute res url -> Aff (JSON.E res)
 get _ = JSON.read <$> action

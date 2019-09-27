@@ -255,7 +255,7 @@ main = launchAff_ do
           }
           app
 
-        _ <- M.listen (M.Port 3000) (log "Started server") app
+        _ <- M.listen (M.Port 4567) (log "Started server") app
         pure unit
       pure unit
 
