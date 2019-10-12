@@ -99,13 +99,8 @@ mkIconURL :: String -> String
 mkIconURL series = "url(\"" <> un M.URL (prefixUrl $ iconsPath) <> "\")"
   where iconsPath = "/icons/" <> unsafeEncodeURIComponent series
 
-render :: Self -> RB.JSX
-render self@{state} =
-  R.div_
-    [ R.h1_ [R.text "vidtracker"]
-    , header
-    , R.div_ $ Array.mapWithIndex mkFile files
-    ]
+getFiles :: State -> Array File
+getFiles state = filterWatched $ groupedFiles state.files
   where
     groupedFiles = if state.grouped
       then Array.sortBy (on compare _.series <> on compare _.episode)
@@ -115,7 +110,16 @@ render self@{state} =
       then Array.filter (isNothing <<< _.watched)
       else identity
 
-    files = filterWatched $ groupedFiles state.files
+
+render :: Self -> RB.JSX
+render self@{state} =
+  R.div_
+    [ R.h1_ [R.text "vidtracker"]
+    , header
+    , R.div_ $ Array.mapWithIndex mkFile files
+    ]
+  where
+    files = getFiles state
 
     header = div' "header"
       [ div' "info" $ [ R.h3_ [ R.text "Info:" ] ] <> infoLines
@@ -262,7 +266,7 @@ eval self UpdateFiles = do
 eval self (ToggleWatched name) = do
   state <- readState' self
   Console.log $ "Updating " <> un Path name
-  case Array.find (\x -> x.name == name) state.files of
+  case Array.find (\x -> x.name == name) (getFiles state) of
     Just file -> do
       _ <- post apiRoutes.update
         { path: file.name
@@ -295,7 +299,7 @@ eval self OpenFile = do
   state <- readState' self
   case state.cursor of
     Just pos
-      | Just file <- Array.index state.files pos
+      | Just file <- Array.index (getFiles state) pos
       -> do
       Console.log $ "Opening file: " <> un Path file.name
       _ <- post apiRoutes.open { path: file.name }
@@ -308,7 +312,7 @@ eval self MarkFile = do
   state <- readState' self
   case state.cursor of
     Just pos
-      | Just file <- Array.index state.files pos
+      | Just file <- Array.index (getFiles state) pos
       -> eval self (ToggleWatched file.name)
     _ -> pure unit
 
