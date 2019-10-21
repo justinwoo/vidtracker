@@ -51,7 +51,7 @@ data Action
   | ToggleWatched Path
   | SetCursor Int
   | LinkClick Int File
-  | WatchedClick Int
+  | WatchedClick Int File
   | EEQuery KeyboardEvent
   | Response Response
 

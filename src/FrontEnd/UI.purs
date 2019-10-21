@@ -117,7 +117,7 @@ fileElement = RB.makeStateless fileElement_ \{ idx, file, props } ->
                 [ "watched"
                 , maybe "" (const "has-date") file.watched
                 ]
-              , onClick: Events.capture_ $ push (WatchedClick idx)
+              , onClick: Events.capture_ $ push (WatchedClick idx file)
               , children:
                   [ R.text $ case file.watched of
                       Just (DateString date) -> "watched " <> date

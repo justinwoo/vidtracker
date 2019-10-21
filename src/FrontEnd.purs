@@ -113,11 +113,11 @@ update action state = case action of
 
   SetCursor i -> state { cursor = Just i }
   LinkClick i _ -> state { cursor = Just i }
+  WatchedClick i _ -> state { cursor = Just i }
 
   OpenFile -> state
   MarkFile -> state
   ToggleWatched _ -> state
-  WatchedClick _ -> state
   EEQuery OpenEvent -> state
   EEQuery MarkEvent -> state
 
@@ -183,10 +183,11 @@ getActionRequests = Event.filterMap go
       in case fileAtCursor, action of
         _, FetchFiles -> Just FetchFilesRequest
 
-        Just file, OpenFile -> Just (OpenFileRequest file)
         _, LinkClick _ file -> Just (OpenFileRequest file)
+        Just file, OpenFile -> Just (OpenFileRequest file)
         Just file, EEQuery OpenEvent -> Just (OpenFileRequest file)
 
+        _, WatchedClick _ file -> Just (MarkFileRequest file)
         Just file, MarkFile -> Just (MarkFileRequest file)
         Just file, ToggleWatched path -> Just (MarkFileRequest file)
         Just file, EEQuery MarkEvent  -> Just (MarkFileRequest file)
