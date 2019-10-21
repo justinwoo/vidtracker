@@ -32,9 +32,6 @@ type WatchedData =
   { path :: Path
   , created :: String
   }
-newtype SortableWatchedData = SortableWatchedData WatchedData
-derive instance eqSortableWD :: Eq SortableWatchedData
-derive instance ordSortableWD :: Ord SortableWatchedData
 
 type Operation =
   { success :: Boolean

@@ -1,0 +1,69 @@
+#+TITLE: FrontEnd notes
+
+* What ChocoPie runs
+
+  #+BEGIN_SRC plantuml :file plants/frontend-data.png
+
+  object main
+  object ui
+  object keyboard
+  object requests
+
+  requests : http
+  keyboard : window key events
+  ui : React
+
+  main : collects sinks
+  main : prepares sources
+
+  main -- ui
+  ui -- main
+
+  keyboard -- main
+
+  main -- requests
+  requests -- main
+
+  #+END_SRC
+
+* File model calculation
+
+  #+BEGIN_SRC plantuml :file plants/calculation.png
+
+  object path
+  object watched
+  object file
+
+  file : name : Path
+  file : watched : Maybe DateString
+  file : series : Maybe String
+  file : episode : Maybe Int
+  file : latest : Maybe Int
+
+  path : String
+
+  watched : path : Path
+  watched : created : String
+
+  path -- file
+  watched .. file
+
+  #+END_SRC
+
+* Files list filtering and grouping
+
+  #+BEGIN_SRC plantuml :file plants/list.png
+
+  start
+
+  if (grouping files?) then
+    :group files by series name;
+  endif
+
+  if (filtering watched?) then
+    :filter out files that have watched date;
+  endif
+
+  stop
+
+  #+END_SRC

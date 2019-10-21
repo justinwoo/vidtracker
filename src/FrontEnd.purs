@@ -3,74 +3,31 @@ module FrontEnd where
 import Prelude
 
 import ChocoPie (runChocoPie)
+import Control.Alt ((<|>))
 import Data.Array as Array
-import Data.Either (Either(..), hush)
-import Data.Foldable (intercalate, maximumBy)
+import Data.Either (hush)
+import Data.Foldable (maximumBy)
 import Data.Function (on)
 import Data.Int as Int
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
-import Data.Newtype (class Newtype, un)
+import Data.Maybe (Maybe(..), isJust, isNothing, maybe)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_, makeAff)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
-import Effect.Uncurried (EffectFn1)
 import FRP.Event (Event)
 import FRP.Event as Event
-import Global.Unsafe (unsafeEncodeURIComponent)
-import Milkis as M
-import Milkis.Impl.Window (windowFetch)
+import FrontEnd.HTTP (http)
+import FrontEnd.Types (Action(..), AppState, DateString(..), Direction(..), File, KeyboardEvent(..), Request(..), ScrollEvent(..))
+import FrontEnd.UI (view)
+import FrontEnd.Window (window)
 import NameParser (nameParser)
-import React.Basic as RB
-import React.Basic.DOM as R
-import React.Basic.DOM.Events as RE
-import React.Basic.Events (SyntheticEvent)
-import React.Basic.Events as Events
-import Routes (GetRoute, PostRoute, apiRoutes)
-import Simple.JSON as JSON
 import Text.Parsing.StringParser (runParser)
-import Type.Prelude (class IsSymbol, SProxy(..), reflectSymbol)
 import Types (Path(..), WatchedData)
 
-newtype DateString = DateString String
-derive instance newtypeDateString :: Newtype DateString _
-
-type File =
-  { name :: Path
-  , watched :: Maybe DateString
-  , series :: Maybe String
-  , episode :: Maybe Int
-  , latest :: Maybe Int
-  }
-
-type State =
-  -- files
-  { files :: Array File
-  , filesData :: Array Path
-  , watchedData :: Array WatchedData
-  , filesLoading :: Boolean
-  , iconsLoading :: Boolean
-  , grouped :: Boolean
-  , filterWatched :: Boolean
-  -- counted by positions from the top
-  , cursor :: Maybe Int
-  }
-
-data Action
-  = FetchData
-  | UpdateFiles
-  | OpenFile
-  | MarkFile
-  | ToggleWatched Path
-  | SetCursor Int
-  | LinkClick Int
-  | WatchedClick Int
-  | EEQuery ExternalEvent
-
-initialState :: State
+initialState :: AppState
 initialState =
   { files: []
-  , filesData: []
+  , paths: []
   , watchedData: []
   , filesLoading: false
   , iconsLoading: false
@@ -79,155 +36,105 @@ initialState =
   , cursor: Nothing
   }
 
-type Props = {}
+fold' :: forall a b. (b -> a -> a) -> Event b -> a -> Event a
+fold' fn event init = pure init <|> Event.fold fn event init
 
-type Self = RB.Self Props State
+main :: Effect Unit
+main = do
+  request <- Event.create
 
-div' :: String -> Array RB.JSX -> RB.JSX
-div' className children = R.div { className, children }
+  let
+    mkSink sources =
+      let
+        actions
+            = map EEQuery sources.window
+          <|> map Response sources.http
+          <|> sources.view
 
-capture_ :: Aff Unit -> EffectFn1 SyntheticEvent Unit
-capture_ = RE.capture_ <<< launchAff_
+        appState = fold' update actions initialState
+        actionsWithAppState = Event.sampleOn appState (Tuple <$> actions)
 
-handler_ :: Aff Unit -> EffectFn1 SyntheticEvent Unit
-handler_ = Events.handler_ <<< launchAff_
+      in
+        { window: getScrollEvents actionsWithAppState
+        , view: appState
+        , http: request.event <|> getActionRequests actionsWithAppState
+        }
 
-readState' :: Self -> Aff State
-readState' = liftEffect <<< RB.readState
+    drivers = {window, view, http}
 
-mkIconURL :: String -> String
-mkIconURL series = "url(\"" <> un M.URL (prefixUrl $ iconsPath) <> "\")"
-  where iconsPath = "/icons/" <> unsafeEncodeURIComponent series
+  liftEffect $ runChocoPie mkSink drivers
 
-getFiles :: State -> Array File
-getFiles state = filterWatched $ groupedFiles state.files
+  -- initial data request
+  request.push FetchFilesRequest
+
+  Console.log "Started application"
+
+calculateFiles :: AppState -> AppState
+calculateFiles state =
+  let
+    { filterWatched, grouped, paths, watchedData } = state
+
+    modifiers = { filterWatched, grouped }
+    allFiles = getFiles paths watchedData
+    files = processFiles allFiles modifiers
+
+  in state { files = files }
+
+update :: Action -> AppState -> AppState
+update action state = case action of
+  FetchFiles -> state { filesLoading = true }
+
+  EEQuery FetchIconsEvent -> state { iconsLoading = true }
+  EEQuery RefreshEvent -> state { filesLoading = true }
+  EEQuery ToggleGroupedEvent -> calculateFiles $ state { grouped = not state.grouped }
+  EEQuery ToggleFilterWatched -> calculateFiles $ state { filterWatched = not state.filterWatched }
+
+  Response { filesData, watchedData } -> calculateFiles $
+    state
+      { filesLoading = false
+      , iconsLoading = false
+      , watchedData = watchedData
+      , paths = filesData
+      }
+
+  EEQuery (DirectionEvent Up) -> state
+    { cursor =
+        case state.cursor of
+          Just idx -> Just $ max 0 (idx - 1)
+          Nothing -> Just 0
+    }
+
+  EEQuery (DirectionEvent Down) -> state
+    { cursor =
+        case state.cursor of
+          Just idx -> Just $ min (Array.length state.files - 1) (idx + 1)
+          Nothing -> Just 0
+    }
+
+  SetCursor i -> state { cursor = Just i }
+  LinkClick i _ -> state { cursor = Just i }
+
+  OpenFile -> state
+  MarkFile -> state
+  ToggleWatched _ -> state
+  WatchedClick _ -> state
+  EEQuery OpenEvent -> state
+  EEQuery MarkEvent -> state
+
+processFiles :: Array File -> { filterWatched :: Boolean, grouped :: Boolean } -> Array File
+processFiles files flags = applyFilter $ applyGrouping files
   where
-    groupedFiles = if state.grouped
+    applyGrouping = if flags.grouped
       then Array.sortBy (on compare _.series <> on compare _.episode)
       else identity
 
-    filterWatched = if state.filterWatched
+    applyFilter = if flags.filterWatched
       then Array.filter (isNothing <<< _.watched)
       else identity
 
-
-render :: Self -> RB.JSX
-render self@{state} =
-  R.div_
-    [ R.h1_ [R.text "vidtracker"]
-    , header
-    , R.div_ $ Array.mapWithIndex mkFile files
-    ]
-  where
-    files = getFiles state
-
-    header = div' "header"
-      [ div' "info" $ [ R.h3_ [ R.text "Info:" ] ] <> infoLines
-      , div' "recents" $ [ R.h3_ [ R.text "Recently watched:" ] ] <> recents
-      ]
-
-    infoLines = R.span_ <<< pure <<< R.text <$>
-      [ "o: open current file"
-      , "k: move cursor up"
-      , "j: move cursor down"
-      , "W/M: mark as watched"
-      , "r: refresh"
-      , "I: fetch icons and reload page"
-      , "files loading: " <> if state.filesLoading then "true" else "false"
-      , "icons loading: " <> if state.iconsLoading then "true" else "false"
-      , "grouped by series: " <> if state.grouped then "true" else "false"
-      , "filtering watched: " <> if state.filterWatched then "true" else "false"
-      ]
-
-    recents = mkRecent <$> Array.take (Array.length infoLines) state.watchedData
-
-    mkRecent { path: Path name } = div' "recent" [ R.text name ]
-
-    mkFile :: Int -> File -> RB.JSX
-    mkFile idx file = RB.keyed (un Path file.name) $ fileElement idx file self
-
-fileElement :: Int -> File -> Self -> RB.JSX
-fileElement idx file self =
-  let
-    state = self.state
-  in
-    R.div
-      { className: intercalate " "
-          [ "file"
-          , case state.cursor of
-              Just pos | pos == idx -> "cursor"
-              _ -> ""
-          , case file.watched of
-              Just _ -> "done"
-              Nothing -> ""
-          ]
-      , title : "latest watched: " <> fromMaybe "unknown" (show <$> file.latest)
-      , onClick: handler_ $ eval self (SetCursor idx)
-      , children:
-          [ R.div
-              { className: "icon"
-              , style:
-                  case file.series of
-                    Just series -> R.css { backgroundImage: mkIconURL series }
-                    Nothing -> R.css {}
-              }
-          , R.div
-              { className: "name"
-              , title: (un Path file.name)
-              , children: [ R.text $ un Path file.name ]
-              , onClick: capture_ $ eval self (LinkClick idx)
-              }
-          , R.div
-              { className: intercalate " "
-                [ "watched"
-                , maybe "" (const "has-date") file.watched
-                ]
-              , onClick: capture_ $ eval self (WatchedClick idx)
-              , children:
-                  [ R.text $ case file.watched of
-                      Just (DateString date) -> "watched " <> date
-                      Nothing -> maybe "" (\x -> " last: " <> show x) file.latest
-                  ]
-              }
-        ]
-    }
-
-eval :: Self -> Action -> Aff Unit
-
-eval self (LinkClick idx) = do
-  eval self (SetCursor idx)
-  eval self OpenFile
-
-eval self (WatchedClick idx) = do
-  eval self (SetCursor idx)
-  eval self MarkFile
-
-eval self FetchData = do
-  setStateAff self _ { filesLoading = true }
-  attempt <- getData
-  liftEffect $ case attempt of
-    Right r -> self.setState _
-      { filesData = r.filesData
-      , watchedData = r.watchedData
-      , filesLoading = false
-      }
-    Left e -> Console.error $ "Failed to fetch data: " <> show e
-  eval self UpdateFiles
-  where
-    getData = do
-      filesData <- get apiRoutes.files
-      watchedData <- get apiRoutes.watched
-      pure $ { filesData: _, watchedData: _ }
-        <$> filesData
-        <*> watchedData
-
-eval self UpdateFiles = do
-  setStateAff self \s -> do
-    let files = mkFile s.watchedData <$> s.filesData
-    let annotated = annotateLatest files
-    if s.grouped
-      then s { files = groupFiles annotated }
-      else s { files = annotated }
+getFiles :: Array Path -> Array WatchedData -> Array File
+getFiles paths watchedData = do
+  annotateLatest $ mkFile watchedData <$> paths
   where
     mkFile watched file@(Path name) =
       { name: Path name
@@ -257,184 +164,34 @@ eval self UpdateFiles = do
             = x { latest = y.episode }
           | otherwise = x
 
-    groupFiles = Array.sortBy
-      (\x y
-        -> compare x.series y.series
-        <> compare x.episode y.episode
-      )
-
-eval self (ToggleWatched name) = do
-  state <- readState' self
-  Console.log $ "Updating " <> un Path name
-  case Array.find (\x -> x.name == name) (getFiles state) of
-    Just file -> do
-      _ <- post apiRoutes.update
-        { path: file.name
-        , watched: maybe true (const false) file.watched
-        }
-      pure unit
-    Nothing -> Console.error $ "Could not find file named " <> un Path name
-  eval self FetchData
-
-eval self (SetCursor idx) = do
-  setStateAff self _ { cursor = Just idx }
-
-eval self (EEQuery (DirectionEvent dir)) = do
-  liftEffect case dir of
-    Down -> self.setState \s -> do
-      let cursor = min (Array.length s.files) (maybe 0 (_ + 1) s.cursor)
-      s { cursor = Just cursor }
-    Up -> self.setState \s -> do
-      let cursor = max 0 (maybe 0 (_ - 1) s.cursor)
-      s { cursor = Just cursor }
-
-  newState <- liftEffect $ RB.readState self
-  case newState.cursor of
-    Just cursor | cursor == 0 -> liftEffect $ scrollToTop
-    Just cursor | Just file <- Array.index newState.files =<< newState.cursor -> do
-      liftEffect $ scrollIntoView file.name
-    _ -> pure unit
-
-eval self OpenFile = do
-  state <- readState' self
-  case state.cursor of
-    Just pos
-      | Just file <- Array.index (getFiles state) pos
-      -> do
-      Console.log $ "Opening file: " <> un Path file.name
-      _ <- post apiRoutes.open { path: file.name }
-      pure unit
-    _ -> pure unit
-
-eval self (EEQuery OpenEvent) = eval self OpenFile
-
-eval self MarkFile = do
-  state <- readState' self
-  case state.cursor of
-    Just pos
-      | Just file <- Array.index (getFiles state) pos
-      -> eval self (ToggleWatched file.name)
-    _ -> pure unit
-
-eval self (EEQuery MarkEvent) = eval self MarkFile
-
-eval self (EEQuery RefreshEvent) = do
-  Console.log "RefreshEvent"
-  eval self FetchData
-
-eval self (EEQuery FetchIconsEvent) = do
-  Console.log "FetchIconsEvent"
-  setStateAff self _ { iconsLoading = true }
-  result <- post apiRoutes.getIcons {}
-  setStateAff self _ { iconsLoading = false }
-  liftEffect $ refreshPage
-
-eval self (EEQuery ToggleGroupedEvent) = do
-  setStateAff self \s -> s { grouped = not s.grouped }
-  eval self UpdateFiles
-
-eval self (EEQuery ToggleFilterWatched) = do
-  setStateAff self \s -> s { filterWatched = not s.filterWatched }
-  eval self UpdateFiles
-
-_ui :: RB.Component Props
-_ui = RB.createComponent "UI"
-
-mkUI :: Event ExternalEvent -> Props -> RB.JSX
-mkUI externalEvents = RB.make _ui
-  { initialState: initialState
-  , render: render
-  , didMount: \self -> do
-      _ <- Event.subscribe externalEvents \ee -> do
-        launchAff_ $ eval self (EEQuery ee)
-      launchAff_ $ eval self FetchData
-  }
-
-data ExternalEvent
-  -- move cursor on j/k
-  = DirectionEvent Direction
-  -- open file on o
-  | OpenEvent
-  -- mark file watched on m
-  | MarkEvent
-  -- call refresh files on r
-  | RefreshEvent
-  -- call fetch icons on I (shift + i)
-  | FetchIconsEvent
-  -- toggle grouping by show name
-  | ToggleGroupedEvent
-  -- toggle filtering watched items
-  | ToggleFilterWatched
-
-data Direction = Up | Down
-
-keyboard :: Event Unit -> Effect (Event ExternalEvent)
-keyboard _ = do
-  {event, push} <- Event.create
-  addWindowKeyListener \key ->
-    case key of
-      "o" -> push OpenEvent
-      "k" -> push $ DirectionEvent Up
-      "j" -> push $ DirectionEvent Down
-      "f" -> push ToggleFilterWatched
-      "W" -> push MarkEvent
-      "M" -> push MarkEvent
-      "r" -> push RefreshEvent
-      "I" -> push FetchIconsEvent
-      "g" -> push ToggleGroupedEvent
-      _ -> pure unit
-  pure event
-
-view :: Event ExternalEvent -> Effect (Event Unit)
-view externalEvents = do
-  renderJSX (mkUI externalEvents {})
-  mempty
-
-main :: Effect Unit
-main = do
-  liftEffect $ runChocoPie mkSink drivers
-  Console.log "Started application"
+getScrollEvents :: Event (Tuple Action AppState) -> Event ScrollEvent
+getScrollEvents = Event.filterMap go
   where
-    mkSink sources =
-      { keyboard: mempty :: Event Unit
-      , view: sources.keyboard
-      }
-    drivers = {keyboard, view}
+    go (Tuple action state) =
+      let
+        fileAtCursor = state.cursor >>= Array.index state.files
+      in case fileAtCursor, action of
+        Just file, EEQuery (DirectionEvent _) -> Just (ScrollFileIntoView file)
+        _, _ -> Nothing
 
-setStateAff :: Self -> (State -> State) -> Aff Unit
-setStateAff self fn = makeAff \cb -> do
-  self.setStateThen fn do cb (Right unit)
-  mempty
-
-foreign import renderJSX :: RB.JSX -> Effect Unit
-
-foreign import refreshPage :: Effect Unit
-
-foreign import addWindowKeyListener :: (String -> Effect Unit) -> Effect Unit
-
-foreign import scrollIntoView :: Path -> Effect Unit
-
-foreign import scrollToTop :: Effect Unit
-
-prefixUrl :: String -> M.URL
-prefixUrl url = M.URL $ "http://localhost:4567" <> url
-
-get :: forall res url. JSON.ReadForeign res => IsSymbol url => GetRoute res url -> Aff (JSON.E res)
-get _ = JSON.read <$> action
+getActionRequests :: Event (Tuple Action AppState) -> Event Request
+getActionRequests = Event.filterMap go
   where
-    url = reflectSymbol (SProxy :: SProxy url)
-    fetch = M.fetch windowFetch
-    action = M.json =<< fetch (prefixUrl url) M.defaultFetchOptions
+    go (Tuple action state) =
+      let
+        fileAtCursor = state.cursor >>= Array.index state.files
+      in case fileAtCursor, action of
+        _, FetchFiles -> Just FetchFilesRequest
 
-post :: forall req res url. JSON.WriteForeign req => JSON.ReadForeign res => IsSymbol url =>
-  PostRoute req res url -> req -> Aff (JSON.E res)
-post _ body = JSON.read <$> action
-  where
-    url = reflectSymbol (SProxy :: SProxy url)
-    fetch = M.fetch windowFetch
-    options =
-      { method: M.postMethod
-      , headers: M.makeHeaders { "Content-Type": "application/json" }
-      , body: JSON.writeJSON body
-      }
-    action = M.json =<< fetch (prefixUrl url) options
+        Just file, OpenFile -> Just (OpenFileRequest file)
+        _, LinkClick _ file -> Just (OpenFileRequest file)
+        Just file, EEQuery OpenEvent -> Just (OpenFileRequest file)
+
+        Just file, MarkFile -> Just (MarkFileRequest file)
+        Just file, ToggleWatched path -> Just (MarkFileRequest file)
+        Just file, EEQuery MarkEvent  -> Just (MarkFileRequest file)
+
+        _, EEQuery RefreshEvent -> Just FetchFilesRequest
+        _, EEQuery FetchIconsEvent  -> Just FetchIconsRequest
+
+        _, _ -> Nothing
