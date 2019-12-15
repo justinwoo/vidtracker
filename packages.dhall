@@ -15,6 +15,6 @@ in      upstream
 		, bonjiri =
 			{ dependencies = [ "prelude" ]
 			, repo = "https://github.com/justinwoo/purescript-bonjiri.git"
-			, version = "v0.2.0"
+			, version = "v0.7.0"
 			}
 		}

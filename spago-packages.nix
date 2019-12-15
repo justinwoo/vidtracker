@@ -91,11 +91,11 @@ let
 
     "bonjiri" = pkgs.stdenv.mkDerivation {
         name = "bonjiri";
-        version = "v0.2.0";
+        version = "v0.7.0";
         src = pkgs.fetchgit {
           url = "https://github.com/justinwoo/purescript-bonjiri.git";
-          rev = "a979c8560e98ab3118d27218231ee73af4292e95";
-          sha256 = "0gbc0yj3npmvzqlpqvqx9jbc9izjjk97zjgcj27vk8ik9sy9q0dp";
+          rev = "a4076ff489e9aa8c6caa1a20bd8f3c7356bf597c";
+          sha256 = "08jr5vz6d6l6mflvxnb8fhi84lwyps10lmygcsb3gdvmysdq8jhs";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
