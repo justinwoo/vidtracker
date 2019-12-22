@@ -89,6 +89,30 @@ let
         installPhase = "ln -s $src $out";
       };
 
+    "bonjiri" = pkgs.stdenv.mkDerivation {
+        name = "bonjiri";
+        version = "v0.7.0";
+        src = pkgs.fetchgit {
+          url = "https://github.com/justinwoo/purescript-bonjiri.git";
+          rev = "a4076ff489e9aa8c6caa1a20bd8f3c7356bf597c";
+          sha256 = "08jr5vz6d6l6mflvxnb8fhi84lwyps10lmygcsb3gdvmysdq8jhs";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
+    "calpis" = pkgs.stdenv.mkDerivation {
+        name = "calpis";
+        version = "v0.1.0";
+        src = pkgs.fetchgit {
+          url = "https://github.com/justinwoo/purescript-calpis.git";
+          rev = "a1513124ec0c727431a2e0aab82f7de8fb5c8144";
+          sha256 = "0npivy7cvg6g58x2xgsg1zr5hagpvd1acrn9bbvr2gi4vjy7x4g7";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
     "catenable-lists" = pkgs.stdenv.mkDerivation {
         name = "catenable-lists";
         version = "v5.0.1";
@@ -528,18 +552,6 @@ let
           url = "https://github.com/purescript-contrib/purescript-media-types.git";
           rev = "e304498356539547b4ed9a7f79513a847c907962";
           sha256 = "0ykwmxrhmwfy6c5mxjxa43xdf5xqakrqyvr5fn986yad50gjqj75";
-        };
-        phases = "installPhase";
-        installPhase = "ln -s $src $out";
-      };
-
-    "milkis" = pkgs.stdenv.mkDerivation {
-        name = "milkis";
-        version = "v7.2.1";
-        src = pkgs.fetchgit {
-          url = "https://github.com/justinwoo/purescript-milkis.git";
-          rev = "7e524d44005ccb6f19c28d6c61fe1488ba637938";
-          sha256 = "0zn6n4gznv8bx4c49fb0mp63szpi9b8fagyx8x6hh1yr8ax2vp8g";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -1229,8 +1241,8 @@ in {
       >>$out echo "#!/usr/bin/env bash"
       >>$out echo
       >>$out echo "echo building project..."
-      >>$out echo "purs compile \"\$@\" ${builtins.toString (
-        builtins.map getGlob (builtins.attrValues inputs))}"
+      >>$out echo "purs compile ${builtins.toString (
+        builtins.map getGlob (builtins.attrValues inputs))}" \"\$@\"
       >>$out echo "echo done."
       chmod +x $out
   '';
@@ -1239,9 +1251,28 @@ in {
       >>$out echo "#!/usr/bin/env bash"
       >>$out echo
       >>$out echo "echo building project using sources from nix store..."
-      >>$out echo "purs compile \"\$@\" ${builtins.toString (
-        builtins.map getStoreGlob (builtins.attrValues inputs))}"
+      >>$out echo "purs compile ${builtins.toString (
+        builtins.map getStoreGlob (builtins.attrValues inputs))}" \"\$@\"
       >>$out echo "echo done."
       chmod +x $out
   '';
+
+  mkBuildProjectOutput =
+    { src, purs }:
+
+    pkgs.stdenv.mkDerivation {
+      name = "build-project-output";
+      src = src;
+
+      buildInputs = [ purs ];
+
+      installPhase = ''
+        mkdir -p $out
+        purs compile "$src/**/*.purs" ${builtins.toString
+          (builtins.map
+            (x: ''"${x.outPath}/src/**/*.purs"'')
+            (builtins.attrValues inputs))}
+        mv output $out
+      '';
+    };
 }

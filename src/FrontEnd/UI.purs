@@ -2,6 +2,7 @@ module FrontEnd.UI where
 
 import Prelude
 
+import Calpis as C
 import Data.Array as Array
 import Data.Foldable (intercalate)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -12,7 +13,6 @@ import FRP.Event as Event
 import FrontEnd.HTTP (prefixUrl)
 import FrontEnd.Types (Action(..), AppState, DateString(..), File)
 import Global.Unsafe (unsafeEncodeURIComponent)
-import Milkis as M
 import React.Basic as RB
 import React.Basic.DOM as R
 import React.Basic.DOM.Events (capture_) as Events
@@ -28,7 +28,7 @@ div' :: String -> Array RB.JSX -> RB.JSX
 div' className children = R.div { className, children }
 
 mkIconURL :: String -> String
-mkIconURL series = "url(\"" <> un M.URL (prefixUrl $ iconsPath) <> "\")"
+mkIconURL series = "url(\"" <> un C.URL (prefixUrl $ iconsPath) <> "\")"
   where iconsPath = "/icons/" <> unsafeEncodeURIComponent series
 
 _ui :: RB.Component Props
