@@ -1,4 +1,8 @@
-# vidtracker
+# vidtracker -- abandoned
+
+I use a newer version of this tool now. While you might refer to this repo to try to learn about some various things, you should know that I do not use this repo as-is anymore, and have not for a long time.
+
+-----
 
 blog post about this [here](http://qiita.com/kimagure/items/b576b5bfe370180599f8)
 
